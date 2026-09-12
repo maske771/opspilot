@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 from .db import get_db
-from .models import Unit
+from .models import Property, Unit
 
 router = APIRouter(prefix="/units", tags=["units"])
 
