@@ -9,7 +9,7 @@
 : "${ALERTMANAGER_TELEGRAM_CHAT_ID:=0}"
 
 cat > /tmp/alertmanager.yml <<EOF
- global:
+global:
   resolve_timeout: 5m
   smtp_smarthost: '${ALERTMANAGER_SMTP_SMARTHOST}'
   smtp_from: '${ALERTMANAGER_SMTP_FROM}'
@@ -50,4 +50,4 @@ receivers:
         send_resolved: true
 EOF
 
-exec /bin/alertmanager --config.file=/tmp/alertmanager.yml --storage.path=/alertmanager
+exec /bin/alertmanager --config.file=/tmp/alertmanager.yml --storage.path=/tmp/alertmanager
