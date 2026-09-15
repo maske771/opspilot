@@ -1,0 +1,36 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "type": "stat", "title": "API Availability", "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "targets": [{"expr": "up{job=\"opspilot-api\"}", "refId": "A"}],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "value"}
+    },
+    {
+      "type": "timeseries", "title": "Requests / sec", "gridPos": {"h": 8, "w": 9, "x": 6, "y": 0},
+      "targets": [{"expr": "sum(rate(http_requests_total{job=\"opspilot-api\"}[5m]))", "legendFormat": "RPS", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []}
+    },
+    {
+      "type": "timeseries", "title": "95th percentile latency", "gridPos": {"h": 8, "w": 9, "x": 15, "y": 0},
+      "targets": [{"expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"opspilot-api\"}[5m])))", "legendFormat": "p95", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []}
+    },
+    {
+      "type": "timeseries", "title": "5xx error rate", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "targets": [{"expr": "sum(rate(http_requests_total{job=\"opspilot-api\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_requests_total{job=\"opspilot-api\"}[5m])), 1)", "legendFormat": "5xx", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "percentunit"}, "overrides": []}
+    },
+    {
+      "type": "timeseries", "title": "Requests by status", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "targets": [{"expr": "sum by (status) (rate(http_requests_total{job=\"opspilot-api\"}[5m]))", "legendFormat": "{{status}}", "refId": "A"}]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["opspilot", "api", "observability"],
+  "title": "OpsPilot API Overview",
+  "uid": "opspilot-api",
+  "version": 1
+}
