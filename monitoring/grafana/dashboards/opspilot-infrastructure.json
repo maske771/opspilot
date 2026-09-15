@@ -1,0 +1,20 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "panels": [
+    {"type":"stat","title":"API Availability","gridPos":{"h":4,"w":6,"x":0,"y":0},"targets":[{"expr":"avg(up{job=\"opspilot-api\"})","legendFormat":"availability"}],"fieldConfig":{"defaults":{"unit":"percentunit","min":0,"max":1},"overrides":[]}},
+    {"type":"timeseries","title":"API Request Rate","gridPos":{"h":8,"w":9,"x":6,"y":0},"targets":[{"expr":"sum(rate(http_requests_total{job=\"opspilot-api\"}[5m]))","legendFormat":"req/s"}],"fieldConfig":{"defaults":{},"overrides":[]}},
+    {"type":"timeseries","title":"API p95 Latency","gridPos":{"h":8,"w":9,"x":15,"y":0},"targets":[{"expr":"histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"opspilot-api\"}[5m])))","legendFormat":"p95"}],"fieldConfig":{"defaults":{"unit":"s"},"overrides":[]}},
+    {"type":"timeseries","title":"API 5xx Rate","gridPos":{"h":8,"w":9,"x":0,"y":8},"targets":[{"expr":"sum(rate(http_requests_total{job=\"opspilot-api\",status=~\"5..\"}[5m]))","legendFormat":"5xx/s"}],"fieldConfig":{"defaults":{},"overrides":[]}},
+    {"type":"timeseries","title":"Container CPU","gridPos":{"h":8,"w":9,"x":9,"y":8},"targets":[{"expr":"sum by (name) (rate(container_cpu_usage_seconds_total{name!=\"\"}[5m]))","legendFormat":"{{name}}"}],"fieldConfig":{"defaults":{},"overrides":[]}},
+    {"type":"timeseries","title":"Container Memory","gridPos":{"h":8,"w":6,"x":18,"y":8},"targets":[{"expr":"sum by (name) (container_memory_usage_bytes{name!=\"\"})","legendFormat":"{{name}}"}],"fieldConfig":{"defaults":{"unit":"bytes"},"overrides":[]}}
+  ],
+  "refresh":"15s",
+  "schemaVersion":39,
+  "tags":["opspilot","infrastructure"],
+  "templating":{"list":[]},
+  "time":{"from":"now-6h","to":"now"},
+  "title":"OpsPilot Infrastructure",
+  "uid":"opspilot-infra",
+  "version":1
+}
