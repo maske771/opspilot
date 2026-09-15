@@ -145,6 +145,8 @@ POST /internal/ai/analyze-image
 POST /internal/ai/daily-report
 ```
 
+Implemented now: `POST /internal/ai/intake`. The MVP uses a deterministic classifier as a safe baseline for category/priority assignment; it is deliberately structured so a real LLM/agent can replace the classifier later. In production, `INTERNAL_API_KEY` is required.
+
 ## Standard error shape
 
 ```json
