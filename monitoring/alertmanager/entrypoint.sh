@@ -33,10 +33,18 @@ receivers:
     email_configs:
       - to: '${ALERTMANAGER_EMAIL_TO}'
         send_resolved: true
+EOF
+
+if [ "${ALERTMANAGER_TELEGRAM_CHAT_ID}" != "0" ] && [ -n "${ALERTMANAGER_TELEGRAM_BOT_TOKEN}" ] && [ "${ALERTMANAGER_TELEGRAM_BOT_TOKEN}" != "replace-me" ]; then
+  cat >> /tmp/alertmanager.yml <<EOF
     telegram_configs:
       - bot_token: '${ALERTMANAGER_TELEGRAM_BOT_TOKEN}'
         chat_id: ${ALERTMANAGER_TELEGRAM_CHAT_ID}
         send_resolved: true
+EOF
+fi
+
+cat >> /tmp/alertmanager.yml <<EOF
 
   - name: opspilot-critical
     email_configs:
@@ -44,10 +52,15 @@ receivers:
         send_resolved: true
         headers:
           Subject: '[OpsPilot][CRITICAL] {{ .CommonLabels.alertname }}'
+EOF
+
+if [ "${ALERTMANAGER_TELEGRAM_CHAT_ID}" != "0" ] && [ -n "${ALERTMANAGER_TELEGRAM_BOT_TOKEN}" ] && [ "${ALERTMANAGER_TELEGRAM_BOT_TOKEN}" != "replace-me" ]; then
+  cat >> /tmp/alertmanager.yml <<EOF
     telegram_configs:
       - bot_token: '${ALERTMANAGER_TELEGRAM_BOT_TOKEN}'
         chat_id: ${ALERTMANAGER_TELEGRAM_CHAT_ID}
         send_resolved: true
 EOF
+fi
 
-exec /bin/alertmanager --config.file=/tmp/alertmanager.yml --storage.path=/tmp/alertmanager
+exec /bin/alertmanager --config.file=/tmp/alertmanager.yml --storage.path=/alertmanager
