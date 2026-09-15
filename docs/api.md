@@ -64,6 +64,8 @@ POST /channels/{id}/test
 
 Supported channel types in the MVP are `line`, `whatsapp`, `telegram`, and `email`. Connect/disconnect/configuration operations require `owner` or `admin`. All reads and mutations are organization-scoped.
 
+Connect accepts both a provider `account_id` (the stable external account identifier used by webhooks) and a human-readable `name`.
+
 ## Webhooks
 
 Implemented:
@@ -77,7 +79,9 @@ POST /webhooks/email/{account_id}
 
 Inbound requests are persisted in `webhook_events`. The handler validates `X-Webhook-Signature` using `WEBHOOK_SECRET` when configured. The accepted signature is an HMAC-SHA256 digest of the raw request body; both the raw digest and `sha256=<digest>` forms are accepted. In production, `WEBHOOK_SECRET` is mandatory. Development may accept unsigned requests when no secret is configured.
 
-`X-Event-Id` is used for idempotency; when absent, the payload `event_id`/`id` is used, otherwise a UUID is generated. Duplicate events for the same organization/provider/account/event ID are ignored. The current ingestion persists the event and returns `accepted`; asynchronous message normalization will be added in the provider integration layer.
+`X-Event-Id` is used for idempotency; when absent, the payload `event_id`/`id` is used, otherwise a UUID is generated. Duplicate events for the same organization/provider/account/event ID are ignored.
+
+Supported inbound events are normalized into the domain model: `CustomerIdentity` → `Customer` → `Conversation` → `Message`. A new non-closed ticket is created for a conversation when one does not already exist. Unsupported/unrecognized provider payloads are still accepted and stored, but return `normalized: false` for later processing.
 
 ## Conversations/messages
 
@@ -105,6 +109,8 @@ POST /tickets/{id}/start
 POST /tickets/{id}/complete
 POST /tickets/{id}/close
 ```
+
+Tickets may optionally reference the originating conversation via `conversation_id`.
 
 ## Dashboard / analytics
 
