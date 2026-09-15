@@ -54,7 +54,6 @@ services:
       - api
       - postgres-exporter
       - cadvisor
-      - alertmanager
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
@@ -75,8 +74,6 @@ services:
       - ./monitoring/alertmanager/alertmanager.yml.tpl:/etc/alertmanager/alertmanager.yml.tpl:ro
       - ./monitoring/alertmanager/entrypoint.sh:/usr/local/bin/opspilot-alertmanager-entrypoint.sh:ro
       - alertmanager_data:/alertmanager
-    depends_on:
-      - prometheus
     command:
       - "/bin/sh"
       - "/usr/local/bin/opspilot-alertmanager-entrypoint.sh"
@@ -95,7 +92,6 @@ services:
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       - prometheus
-      - alertmanager
 
 volumes:
   postgres_data:
