@@ -11,6 +11,7 @@ from .db import get_db
 from .models import Channel, User
 
 router = APIRouter(prefix="/channels", tags=["channels"])
+SUPPORTED_CHANNELS = {"line", "whatsapp", "telegram", "email"}
 
 
 class ChannelRead(BaseModel):
@@ -18,27 +19,31 @@ class ChannelRead(BaseModel):
     id: uuid.UUID
     organization_id: uuid.UUID
     type: str
+    account_id: str
     name: str
     status: str
     created_at: datetime
 
 
 class ChannelConnect(BaseModel):
+    account_id: str = Field(min_length=1, max_length=255)
     name: str = Field(min_length=1, max_length=255)
 
 
 class ChannelUpdate(BaseModel):
+    account_id: str | None = Field(default=None, min_length=1, max_length=255)
     name: str | None = Field(default=None, min_length=1, max_length=255)
 
 
-SUPPORTED_CHANNELS = {"line", "whatsapp", "telegram", "email"}
+def normalize_channel_value(value: str, label: str) -> str:
+    value = value.strip()
+    if not value:
+        raise ValueError(f"Channel {label} must not be blank")
+    return value
 
 
 def normalize_channel_name(name: str) -> str:
-    value = name.strip()
-    if not value:
-        raise ValueError("Channel name must not be blank")
-    return value
+    return normalize_channel_value(name, "name")
 
 
 @router.get("", response_model=list[ChannelRead])
@@ -52,10 +57,11 @@ def connect_channel(channel_type: str, payload: ChannelConnect, user: User = Dep
     if channel_type not in SUPPORTED_CHANNELS:
         raise HTTPException(400, "Unsupported channel type")
     try:
+        account_id = normalize_channel_value(payload.account_id, "account_id")
         name = normalize_channel_name(payload.name)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
-    channel = Channel(organization_id=user.organization_id, type=channel_type, name=name, status="connected")
+    channel = Channel(organization_id=user.organization_id, type=channel_type, account_id=account_id, name=name, status="connected")
     db.add(channel)
     db.commit()
     db.refresh(channel)
@@ -86,13 +92,13 @@ def update_channel(channel_id: uuid.UUID, payload: ChannelUpdate, user: User = D
     channel = db.get(Channel, channel_id)
     if channel is None or channel.organization_id != user.organization_id:
         raise HTTPException(404, "Channel not found")
-    for field, value in payload.model_dump(exclude_unset=True).items():
-        if field == "name":
-            try:
-                value = normalize_channel_name(value)
-            except ValueError as exc:
-                raise HTTPException(400, str(exc)) from exc
-        setattr(channel, field, value)
+    changes = payload.model_dump(exclude_unset=True)
+    try:
+        for field, value in changes.items():
+            value = normalize_channel_value(value, field)
+            setattr(channel, field, value)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
     db.commit()
     db.refresh(channel)
     return channel
