@@ -29,7 +29,7 @@ services:
       - db
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.53.0
+    image: ghcr.io/google/cadvisor:v0.56.2
     privileged: true
     devices:
       - /dev/kmsg:/dev/kmsg
