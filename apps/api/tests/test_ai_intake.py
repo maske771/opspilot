@@ -19,3 +19,9 @@ def test_intake_falls_back_to_other():
     result = classify("I need some information about the apartment")
     assert result.category == "other"
     assert result.priority == TicketPriority.MEDIUM
+
+
+def test_intake_classifies_electrical():
+    result = classify("The power socket is broken")
+    assert result.category == "electrical"
+    assert result.priority == TicketPriority.HIGH
