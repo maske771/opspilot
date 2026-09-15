@@ -44,6 +44,8 @@ jobs:
           done
       - name: Run pytest
         working-directory: apps/api
+        env:
+          PYTHONPATH: ${{ github.workspace }}/apps/api
         run: pytest -q
       - name: Start API
         run: |
