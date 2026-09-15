@@ -60,6 +60,7 @@ services:
 
   alertmanager:
     image: prom/alertmanager:v0.30.0
+    user: "0:0"
     ports:
       - "9093:9093"
     environment:
