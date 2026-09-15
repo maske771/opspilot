@@ -7,14 +7,21 @@ POST /auth/register
 POST /auth/login
 POST /auth/refresh
 POST /auth/logout
+GET  /auth/me
 ```
 
-## Organization
+## Organization / users
 
 ```text
 GET   /organization
 PATCH /organization
+GET   /users
+POST  /users
+PATCH /users/{id}/role
+DELETE /users/{id}
 ```
+
+All user and organization operations are tenant-scoped. Owner/admin permissions are enforced server-side.
 
 ## Properties / units
 
@@ -27,6 +34,7 @@ DELETE /properties/{id}
 
 GET   /properties/{id}/units
 POST  /properties/{id}/units
+GET   /units/{id}
 PATCH /units/{id}
 DELETE /units/{id}
 ```
@@ -44,12 +52,12 @@ GET   /customers/{id}/identities
 ## Channels
 
 ```text
-GET   /channels
-POST  /channels/{type}/connect
-POST  /channels/{type}/disconnect
-GET   /channels/{id}
+GET /channels
+POST /channels/{type}/connect
+POST /channels/{type}/disconnect
+GET /channels/{id}
 PATCH /channels/{id}
-POST  /channels/{id}/test
+POST /channels/{id}/test
 ```
 
 ## Webhooks
@@ -88,8 +96,17 @@ POST /tickets/{id}/close
 
 ## Dashboard / analytics
 
+Implemented now:
+
 ```text
 GET /dashboard/summary
+```
+
+`/dashboard/summary` returns tenant-scoped totals for tickets, open tickets, overdue tickets, customers, properties and units, plus complete ticket breakdowns by status and priority. Open tickets are `new`, `assigned`, `accepted`, `in_progress`, and `waiting_approval`. Overdue means a non-closed ticket whose resolution deadline has passed.
+
+Planned next:
+
+```text
 GET /dashboard/open-tickets
 GET /dashboard/overdue
 GET /dashboard/critical
