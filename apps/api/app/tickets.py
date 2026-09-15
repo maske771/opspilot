@@ -21,6 +21,7 @@ class TicketCreate(BaseModel):
     customer_id: uuid.UUID | None = None
     property_id: uuid.UUID | None = None
     unit_id: uuid.UUID | None = None
+    conversation_id: uuid.UUID | None = None
     category: str = "other"
     priority: TicketPriority = TicketPriority.MEDIUM
 
@@ -39,12 +40,12 @@ class TicketAssign(BaseModel):
 
 class TicketRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-
     id: uuid.UUID
     organization_id: uuid.UUID
     customer_id: uuid.UUID | None
     property_id: uuid.UUID | None
     unit_id: uuid.UUID | None
+    conversation_id: uuid.UUID | None
     title: str
     description: str
     category: str
@@ -81,22 +82,12 @@ def _transition(ticket: Ticket, target: TicketStatus) -> None:
         TicketStatus.CLOSED: set(),
     }
     if target not in allowed[ticket.status]:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Invalid ticket transition: {ticket.status.value} -> {target.value}",
-        )
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Invalid ticket transition: {ticket.status.value} -> {target.value}")
     ticket.status = target
 
 
 @router.get("", response_model=list[TicketRead])
-def list_tickets(
-    ticket_status: TicketStatus | None = Query(default=None, alias="status"),
-    priority: TicketPriority | None = None,
-    limit: int = Query(default=50, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
-    user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> list[Ticket]:
+def list_tickets(ticket_status: TicketStatus | None = Query(default=None, alias="status"), priority: TicketPriority | None = None, limit: int = Query(default=50, ge=1, le=100), offset: int = Query(default=0, ge=0), user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[Ticket]:
     stmt = select(Ticket).where(Ticket.organization_id == user.organization_id)
     if ticket_status is not None:
         stmt = stmt.where(Ticket.status == ticket_status)
@@ -107,25 +98,16 @@ def list_tickets(
 
 
 @router.post("", response_model=TicketRead, status_code=status.HTTP_201_CREATED)
-def create_ticket(
-    payload: TicketCreate,
-    user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> Ticket:
+def create_ticket(payload: TicketCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Ticket:
     if payload.organization_id != user.organization_id:
         raise HTTPException(status_code=403, detail="Organization scope violation")
+    if payload.conversation_id is not None:
+        from .models import Conversation
+        conversation = db.get(Conversation, payload.conversation_id)
+        if conversation is None or conversation.organization_id != user.organization_id:
+            raise HTTPException(status_code=400, detail="Conversation does not belong to organization")
 
-    ticket = Ticket(
-        organization_id=user.organization_id,
-        customer_id=payload.customer_id,
-        property_id=payload.property_id,
-        unit_id=payload.unit_id,
-        title=payload.title,
-        description=payload.description,
-        category=payload.category,
-        priority=payload.priority,
-        status=TicketStatus.NEW,
-    )
+    ticket = Ticket(organization_id=user.organization_id, customer_id=payload.customer_id, property_id=payload.property_id, unit_id=payload.unit_id, conversation_id=payload.conversation_id, title=payload.title, description=payload.description, category=payload.category, priority=payload.priority, status=TicketStatus.NEW)
     db.add(ticket)
     db.flush()
     ticket.response_deadline, ticket.resolution_deadline = calculate_sla(ticket.priority, ticket.created_at)
@@ -140,17 +122,11 @@ def get_ticket(ticket_id: uuid.UUID, user: User = Depends(get_current_user), db:
 
 
 @router.patch("/{ticket_id}", response_model=TicketRead)
-def update_ticket(
-    ticket_id: uuid.UUID,
-    payload: TicketUpdate,
-    user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> Ticket:
+def update_ticket(ticket_id: uuid.UUID, payload: TicketUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Ticket:
     ticket = _get_ticket(ticket_id, user, db)
     changes = payload.model_dump(exclude_unset=True)
     if "assignee_id" in changes and changes["assignee_id"] is not None:
         _ensure_assignee(ticket, changes["assignee_id"], db)
-
     priority_changed = "priority" in changes and changes["priority"] != ticket.priority
     for field, value in changes.items():
         setattr(ticket, field, value)
@@ -164,12 +140,7 @@ def update_ticket(
 
 
 @router.post("/{ticket_id}/assign", response_model=TicketRead)
-def assign_ticket(
-    ticket_id: uuid.UUID,
-    payload: TicketAssign,
-    user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> Ticket:
+def assign_ticket(ticket_id: uuid.UUID, payload: TicketAssign, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Ticket:
     ticket = _get_ticket(ticket_id, user, db)
     _ensure_assignee(ticket, payload.assignee_id, db)
     ticket.assignee_id = payload.assignee_id
