@@ -31,6 +31,16 @@ class ChannelUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
 
 
+SUPPORTED_CHANNELS = {"line", "whatsapp", "telegram", "email"}
+
+
+def normalize_channel_name(name: str) -> str:
+    value = name.strip()
+    if not value:
+        raise ValueError("Channel name must not be blank")
+    return value
+
+
 @router.get("", response_model=list[ChannelRead])
 def list_channels(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     return list(db.scalars(select(Channel).where(Channel.organization_id == user.organization_id).order_by(Channel.created_at)).all())
@@ -39,9 +49,13 @@ def list_channels(user: User = Depends(get_current_user), db: Session = Depends(
 @router.post("/{channel_type}/connect", response_model=ChannelRead, status_code=201)
 def connect_channel(channel_type: str, payload: ChannelConnect, user: User = Depends(require_roles("owner", "admin")), db: Session = Depends(get_db)):
     channel_type = channel_type.strip().lower()
-    if channel_type not in {"line", "whatsapp", "telegram", "email"}:
+    if channel_type not in SUPPORTED_CHANNELS:
         raise HTTPException(400, "Unsupported channel type")
-    channel = Channel(organization_id=user.organization_id, type=channel_type, name=payload.name.strip(), status="connected")
+    try:
+        name = normalize_channel_name(payload.name)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    channel = Channel(organization_id=user.organization_id, type=channel_type, name=name, status="connected")
     db.add(channel)
     db.commit()
     db.refresh(channel)
@@ -73,7 +87,12 @@ def update_channel(channel_id: uuid.UUID, payload: ChannelUpdate, user: User = D
     if channel is None or channel.organization_id != user.organization_id:
         raise HTTPException(404, "Channel not found")
     for field, value in payload.model_dump(exclude_unset=True).items():
-        setattr(channel, field, value.strip() if isinstance(value, str) else value)
+        if field == "name":
+            try:
+                value = normalize_channel_name(value)
+            except ValueError as exc:
+                raise HTTPException(400, str(exc)) from exc
+        setattr(channel, field, value)
     db.commit()
     db.refresh(channel)
     return channel
