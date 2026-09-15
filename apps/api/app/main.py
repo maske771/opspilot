@@ -12,6 +12,7 @@ from .channel_routes import router as channel_router
 from .conversation_routes import router as conversation_router
 from .webhook_routes import router as webhook_router
 from .ai_routes import router as ai_router
+from .observability import instrumentator, router as observability_router
 
 app = FastAPI(title="OpsPilot API", version="0.1.0")
 app.include_router(auth_router)
@@ -26,6 +27,9 @@ app.include_router(channel_router)
 app.include_router(conversation_router)
 app.include_router(webhook_router)
 app.include_router(ai_router)
+app.include_router(observability_router)
+
+instrumentator.instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
 
 @app.get("/health")
