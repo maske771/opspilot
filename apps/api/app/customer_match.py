@@ -2,7 +2,7 @@ import re
 import uuid
 from dataclasses import dataclass
 
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .models import Customer, CustomerIdentity
@@ -28,7 +28,6 @@ def normalize_phone(value: str | None) -> str | None:
     digits = re.sub(r"\D", "", value)
     if not digits:
         return None
-    # Treat Russian local 8-prefix and international +7 as the same number.
     if len(digits) == 11 and digits.startswith("8"):
         digits = "7" + digits[1:]
     return digits
@@ -56,15 +55,15 @@ def find_customer(
 
     normalized_email = normalize_email(email)
     if normalized_email:
-        customer = db.scalar(
+        candidates = db.scalars(
             select(Customer).where(
                 Customer.organization_id == organization_id,
                 Customer.email.is_not(None),
                 Customer.email == normalized_email,
             )
-        )
-        if customer:
-            return CustomerMatch(customer, "email", 0.98)
+        ).all()
+        if len(candidates) == 1:
+            return CustomerMatch(candidates[0], "email", 0.98)
 
     normalized_phone = normalize_phone(phone)
     if normalized_phone:
@@ -74,8 +73,8 @@ def find_customer(
                 Customer.phone.is_not(None),
             )
         ).all()
-        for customer in candidates:
-            if normalize_phone(customer.phone) == normalized_phone:
-                return CustomerMatch(customer, "phone", 0.97)
+        matches = [customer for customer in candidates if normalize_phone(customer.phone) == normalized_phone]
+        if len(matches) == 1:
+            return CustomerMatch(matches[0], "phone", 0.97)
 
     return CustomerMatch(None, "new", 0.0)
