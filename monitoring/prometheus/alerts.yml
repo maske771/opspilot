@@ -1,0 +1,58 @@
+groups:
+  - name: opspilot-availability
+    rules:
+      - alert: OpsPilotAPIDown
+        expr: up{job="opspilot-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: OpsPilot API is down
+          description: Prometheus cannot scrape the OpsPilot API for more than 2 minutes.
+
+      - alert: OpsPilotAPIHigh5xxRate
+        expr: sum(rate(http_requests_total{job="opspilot-api",status=~"5.."}[5m])) / clamp_min(sum(rate(http_requests_total{job="opspilot-api"}[5m])), 0.001) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: OpsPilot API 5xx rate is high
+          description: More than 5% of API requests returned 5xx responses for 5 minutes.
+
+      - alert: OpsPilotAPIHighLatency
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job="opspilot-api"}[5m]))) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: OpsPilot API latency is high
+          description: API p95 request latency is above 1 second for 10 minutes.
+
+  - name: opspilot-infrastructure
+    rules:
+      - alert: PostgreSQLExporterDown
+        expr: up{job="postgres-exporter"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: PostgreSQL exporter is down
+          description: PostgreSQL metrics are unavailable.
+
+      - alert: ContainerHighCPU
+        expr: sum by (name) (rate(container_cpu_usage_seconds_total{name!=""}[5m])) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Container CPU usage is high
+          description: Container CPU usage exceeded 80% for 10 minutes.
+
+      - alert: ContainerHighMemory
+        expr: container_memory_usage_bytes{name!=""} / clamp_min(container_spec_memory_limit_bytes{name!=""}, 1) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Container memory usage is high
+          description: Container memory usage exceeded 85% of its configured limit.
