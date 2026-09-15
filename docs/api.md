@@ -62,9 +62,11 @@ PATCH /channels/{id}
 POST /channels/{id}/test
 ```
 
-Supported channel types in the MVP are `line`, `whatsapp`, `telegram`, and `email`. Connect/disconnect/configuration operations require `owner` or `admin`. All reads and mutations are organization-scoped. The current `test` endpoint validates that the channel exists and is accessible; provider-specific connectivity checks will be added with real integrations.
+Supported channel types in the MVP are `line`, `whatsapp`, `telegram`, and `email`. Connect/disconnect/configuration operations require `owner` or `admin`. All reads and mutations are organization-scoped.
 
 ## Webhooks
+
+Implemented:
 
 ```text
 POST /webhooks/line/{account_id}
@@ -73,7 +75,9 @@ POST /webhooks/telegram/{account_id}
 POST /webhooks/email/{account_id}
 ```
 
-Webhook handlers must validate provider signatures where applicable, persist the inbound event, return success quickly, and enqueue asynchronous processing.
+Inbound requests are persisted in `webhook_events`. The handler validates `X-Webhook-Signature` using `WEBHOOK_SECRET` when configured. The accepted signature is an HMAC-SHA256 digest of the raw request body; both the raw digest and `sha256=<digest>` forms are accepted. In production, `WEBHOOK_SECRET` is mandatory. Development may accept unsigned requests when no secret is configured.
+
+`X-Event-Id` is used for idempotency; when absent, the payload `event_id`/`id` is used, otherwise a UUID is generated. Duplicate events for the same organization/provider/account/event ID are ignored. The current ingestion persists the event and returns `accepted`; asynchronous message normalization will be added in the provider integration layer.
 
 ## Conversations/messages
 
