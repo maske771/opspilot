@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from .ai_intake import classify
+from .ai_response import get_response_generator
 from .customer_match import find_customer
 from .db import get_db
 
@@ -35,6 +36,19 @@ class CustomerMatchRequest(BaseModel):
 class CustomerMatchResponse(BaseModel):
     customer_id: uuid.UUID | None
     match_type: str
+    confidence: float
+    request_id: uuid.UUID
+
+
+class GenerateResponseRequest(BaseModel):
+    customer_message: str = Field(min_length=1, max_length=10000)
+    category: str = Field(min_length=1, max_length=100)
+    priority: str = Field(min_length=1, max_length=30)
+
+
+class GenerateResponseResponse(BaseModel):
+    text: str
+    provider: str
     confidence: float
     request_id: uuid.UUID
 
@@ -79,6 +93,25 @@ def customer_match(
     return CustomerMatchResponse(
         customer_id=result.customer.id if result.customer else None,
         match_type=result.match_type,
+        confidence=result.confidence,
+        request_id=uuid.uuid4(),
+    )
+
+
+@router.post("/generate-response", response_model=GenerateResponseResponse)
+def generate_response(
+    payload: GenerateResponseRequest,
+    x_internal_api_key: str | None = Header(default=None),
+):
+    _check_internal_key(x_internal_api_key)
+    result = get_response_generator().generate(
+        customer_message=payload.customer_message,
+        category=payload.category,
+        priority=payload.priority,
+    )
+    return GenerateResponseResponse(
+        text=result.text,
+        provider=result.provider,
         confidence=result.confidence,
         request_id=uuid.uuid4(),
     )
