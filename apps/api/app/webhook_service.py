@@ -89,46 +89,21 @@ def normalize_event(provider: str, payload: dict[str, Any]) -> NormalizedEvent |
     return None
 
 
-def ingest_normalized_event(db: Session, organization_id, channel, event: NormalizedEvent) -> dict[str, Any]:
-    identity = db.scalar(select(CustomerIdentity).where(
-        CustomerIdentity.organization_id == organization_id,
-        CustomerIdentity.channel_type == channel.type,
-        CustomerIdentity.external_user_id == event.external_user_id,
-    ))
-
+def ingest_normalized_event(db: Session, organization_id, channel, event: NormalizedEvent) -> tuple[dict[str, Any], bool, bool]:
+    identity = db.scalar(select(CustomerIdentity).where(CustomerIdentity.organization_id == organization_id, CustomerIdentity.channel_type == channel.type, CustomerIdentity.external_user_id == event.external_user_id))
     if identity:
         customer = db.get(Customer, identity.customer_id)
     else:
-        customer = Customer(
-            organization_id=organization_id,
-            name=event.customer_name,
-            phone=event.phone,
-            email=event.email,
-        )
+        customer = Customer(organization_id=organization_id, name=event.customer_name, phone=event.phone, email=event.email)
         db.add(customer)
         db.flush()
-        identity = CustomerIdentity(
-            organization_id=organization_id,
-            customer_id=customer.id,
-            channel_type=channel.type,
-            external_user_id=event.external_user_id,
-        )
+        identity = CustomerIdentity(organization_id=organization_id, customer_id=customer.id, channel_type=channel.type, external_user_id=event.external_user_id)
         db.add(identity)
         db.flush()
 
-    conversation = db.scalar(select(Conversation).where(
-        Conversation.organization_id == organization_id,
-        Conversation.channel_id == channel.id,
-        Conversation.external_conversation_id == event.external_conversation_id,
-    ))
+    conversation = db.scalar(select(Conversation).where(Conversation.organization_id == organization_id, Conversation.channel_id == channel.id, Conversation.external_conversation_id == event.external_conversation_id))
     if conversation is None:
-        conversation = Conversation(
-            organization_id=organization_id,
-            customer_id=customer.id,
-            channel_id=channel.id,
-            external_conversation_id=event.external_conversation_id,
-            status="open",
-        )
+        conversation = Conversation(organization_id=organization_id, customer_id=customer.id, channel_id=channel.id, external_conversation_id=event.external_conversation_id, status="open")
         db.add(conversation)
         db.flush()
     elif conversation.customer_id is None:
@@ -136,44 +111,19 @@ def ingest_normalized_event(db: Session, organization_id, channel, event: Normal
 
     message = None
     if event.external_message_id:
-        message = db.scalar(select(Message).where(
-            Message.conversation_id == conversation.id,
-            Message.external_message_id == event.external_message_id,
-        ))
-    if message is None:
-        message = Message(
-            conversation_id=conversation.id,
-            direction="inbound",
-            content=event.text,
-            external_message_id=event.external_message_id,
-        )
+        message = db.scalar(select(Message).where(Message.conversation_id == conversation.id, Message.external_message_id == event.external_message_id))
+    message_created = message is None
+    if message_created:
+        message = Message(conversation_id=conversation.id, direction="inbound", content=event.text, external_message_id=event.external_message_id)
         db.add(message)
         db.flush()
 
-    ticket = db.scalar(select(Ticket).where(
-        Ticket.organization_id == organization_id,
-        Ticket.conversation_id == conversation.id,
-        Ticket.status != TicketStatus.CLOSED,
-    ).order_by(Ticket.created_at.desc()))
-    if ticket is None:
-        ticket = Ticket(
-            organization_id=organization_id,
-            customer_id=customer.id,
-            conversation_id=conversation.id,
-            title=event.text[:255],
-            description=event.text,
-            category="other",
-            priority=TicketPriority.MEDIUM,
-            status=TicketStatus.NEW,
-        )
+    ticket = db.scalar(select(Ticket).where(Ticket.organization_id == organization_id, Ticket.conversation_id == conversation.id, Ticket.status != TicketStatus.CLOSED).order_by(Ticket.created_at.desc()))
+    ticket_created = ticket is None
+    if ticket_created:
+        ticket = Ticket(organization_id=organization_id, customer_id=customer.id, conversation_id=conversation.id, title=event.text[:255], description=event.text, category="other", priority=TicketPriority.MEDIUM, status=TicketStatus.NEW)
         db.add(ticket)
         db.flush()
         ticket.response_deadline, ticket.resolution_deadline = calculate_sla(ticket.priority, ticket.created_at)
 
-    return {
-        "customer_id": customer.id,
-        "conversation_id": conversation.id,
-        "message_id": message.id,
-        "ticket_id": ticket.id,
-        "ticket_created": ticket.created_at == ticket.updated_at,
-    }
+    return {"customer_id": customer.id, "conversation_id": conversation.id, "message_id": message.id, "ticket_id": ticket.id}, message_created, ticket_created
