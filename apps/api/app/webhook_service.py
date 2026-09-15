@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .ai_intake import classify
+from .customer_match import find_customer, normalize_email, normalize_phone
 from .models import Conversation, Customer, CustomerIdentity, Message, Ticket, TicketStatus
 from .sla import calculate_sla
 
@@ -73,13 +74,48 @@ def normalize_event(provider: str, payload: dict[str, Any]) -> NormalizedEvent |
 
 def ingest_normalized_event(db: Session, organization_id, channel, event: NormalizedEvent) -> tuple[dict[str, Any], bool, bool]:
     channel_type, channel_id = channel["type"], channel["id"]
-    identity = db.scalar(select(CustomerIdentity).where(CustomerIdentity.organization_id == organization_id, CustomerIdentity.channel_type == channel_type, CustomerIdentity.external_user_id == event.external_user_id))
-    if identity:
-        customer = db.get(Customer, identity.customer_id)
+    match = find_customer(
+        db,
+        organization_id,
+        channel_type=channel_type,
+        external_user_id=event.external_user_id,
+        email=event.email,
+        phone=event.phone,
+    )
+    customer = match.customer
+    if customer is None:
+        customer = Customer(
+            organization_id=organization_id,
+            name=event.customer_name,
+            phone=normalize_phone(event.phone),
+            email=normalize_email(event.email),
+        )
+        db.add(customer)
+        db.flush()
     else:
-        customer = Customer(organization_id=organization_id, name=event.customer_name, phone=event.phone, email=event.email)
-        db.add(customer); db.flush()
-        db.add(CustomerIdentity(organization_id=organization_id, customer_id=customer.id, channel_type=channel_type, external_user_id=event.external_user_id)); db.flush()
+        if not customer.name and event.customer_name:
+            customer.name = event.customer_name
+        if not customer.email and event.email:
+            customer.email = normalize_email(event.email)
+        if not customer.phone and event.phone:
+            customer.phone = normalize_phone(event.phone)
+
+    identity = db.scalar(
+        select(CustomerIdentity).where(
+            CustomerIdentity.organization_id == organization_id,
+            CustomerIdentity.channel_type == channel_type,
+            CustomerIdentity.external_user_id == event.external_user_id,
+        )
+    )
+    if identity is None:
+        db.add(CustomerIdentity(
+            organization_id=organization_id,
+            customer_id=customer.id,
+            channel_type=channel_type,
+            external_user_id=event.external_user_id,
+        ))
+        db.flush()
+
     conversation = db.scalar(select(Conversation).where(Conversation.organization_id == organization_id, Conversation.channel_id == channel_id, Conversation.external_conversation_id == event.external_conversation_id))
     if conversation is None:
         conversation = Conversation(organization_id=organization_id, customer_id=customer.id, channel_id=channel_id, external_conversation_id=event.external_conversation_id, status="open")
