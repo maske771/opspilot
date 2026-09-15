@@ -51,14 +51,18 @@ GET   /customers/{id}/identities
 
 ## Channels
 
+Implemented:
+
 ```text
-GET /channels
+GET  /channels
 POST /channels/{type}/connect
 POST /channels/{type}/disconnect
-GET /channels/{id}
+GET  /channels/{id}
 PATCH /channels/{id}
 POST /channels/{id}/test
 ```
+
+Supported channel types in the MVP are `line`, `whatsapp`, `telegram`, and `email`. Connect/disconnect/configuration operations require `owner` or `admin`. All reads and mutations are organization-scoped. The current `test` endpoint validates that the channel exists and is accessible; provider-specific connectivity checks will be added with real integrations.
 
 ## Webhooks
 
@@ -73,11 +77,15 @@ Webhook handlers must validate provider signatures where applicable, persist the
 
 ## Conversations/messages
 
+Implemented read API:
+
 ```text
 GET /conversations
 GET /conversations/{id}
 GET /conversations/{id}/messages
 ```
+
+Conversation and message reads are organization-scoped. Messages are returned chronologically. Creation of conversations/messages is reserved for webhook/provider ingestion and is not exposed as a general-purpose public write endpoint.
 
 ## Tickets
 
