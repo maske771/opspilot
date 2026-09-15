@@ -9,19 +9,15 @@ from .auth import get_current_user, require_roles
 from .db import get_db
 from .models import Property, Unit, User
 
-router = APIRouter(prefix="/units", tags=["units"])
+router = APIRouter(tags=["units"])
 
 
 class UnitCreate(BaseModel):
-    organization_id: uuid.UUID
-    property_id: uuid.UUID
-    name: str = Field(min_length=1, max_length=100)
-    unit_type: str | None = None
+    unit_number: str = Field(min_length=1, max_length=100)
 
 
 class UnitUpdate(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=100)
-    unit_type: str | None = None
+    unit_number: str | None = Field(default=None, min_length=1, max_length=100)
 
 
 class UnitRead(BaseModel):
@@ -29,42 +25,53 @@ class UnitRead(BaseModel):
     id: uuid.UUID
     organization_id: uuid.UUID
     property_id: uuid.UUID
-    name: str
-    unit_type: str | None
+    unit_number: str
 
 
-@router.get("", response_model=list[UnitRead])
-def list_units(property_id: uuid.UUID | None = None, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    stmt = select(Unit).where(Unit.organization_id == user.organization_id)
-    if property_id is not None:
-        stmt = stmt.where(Unit.property_id == property_id)
-    return list(db.scalars(stmt.order_by(Unit.name)).all())
-
-
-@router.post("", response_model=UnitRead, status_code=201)
-def create_unit(payload: UnitCreate, user: User = Depends(require_roles("owner", "admin", "manager")), db: Session = Depends(get_db)):
-    if payload.organization_id != user.organization_id:
-        raise HTTPException(403, "Organization scope violation")
-    property_item = db.get(Property, payload.property_id)
+@router.get("/properties/{property_id}/units", response_model=list[UnitRead])
+def list_property_units(
+    property_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    property_item = db.get(Property, property_id)
     if property_item is None or property_item.organization_id != user.organization_id:
         raise HTTPException(404, "Property not found")
-    item = Unit(organization_id=user.organization_id, property_id=payload.property_id, name=payload.name, unit_type=payload.unit_type)
+    stmt = select(Unit).where(
+        Unit.organization_id == user.organization_id,
+        Unit.property_id == property_id,
+    ).order_by(Unit.unit_number)
+    return list(db.scalars(stmt).all())
+
+
+@router.post("/properties/{property_id}/units", response_model=UnitRead, status_code=201)
+def create_property_unit(
+    property_id: uuid.UUID,
+    payload: UnitCreate,
+    user: User = Depends(require_roles("owner", "admin", "manager")),
+    db: Session = Depends(get_db),
+):
+    property_item = db.get(Property, property_id)
+    if property_item is None or property_item.organization_id != user.organization_id:
+        raise HTTPException(404, "Property not found")
+    item = Unit(
+        organization_id=user.organization_id,
+        property_id=property_id,
+        unit_number=payload.unit_number,
+    )
     db.add(item)
     db.commit()
     db.refresh(item)
     return item
 
 
-@router.get("/{unit_id}", response_model=UnitRead)
-def get_unit(unit_id: uuid.UUID, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    item = db.get(Unit, unit_id)
-    if item is None or item.organization_id != user.organization_id:
-        raise HTTPException(404, "Unit not found")
-    return item
-
-
-@router.patch("/{unit_id}", response_model=UnitRead)
-def update_unit(unit_id: uuid.UUID, payload: UnitUpdate, user: User = Depends(require_roles("owner", "admin", "manager")), db: Session = Depends(get_db)):
+@router.patch("/units/{unit_id}", response_model=UnitRead)
+def update_unit(
+    unit_id: uuid.UUID,
+    payload: UnitUpdate,
+    user: User = Depends(require_roles("owner", "admin", "manager")),
+    db: Session = Depends(get_db),
+):
     item = db.get(Unit, unit_id)
     if item is None or item.organization_id != user.organization_id:
         raise HTTPException(404, "Unit not found")
@@ -75,8 +82,12 @@ def update_unit(unit_id: uuid.UUID, payload: UnitUpdate, user: User = Depends(re
     return item
 
 
-@router.delete("/{unit_id}", status_code=204)
-def delete_unit(unit_id: uuid.UUID, user: User = Depends(require_roles("owner", "admin")), db: Session = Depends(get_db)):
+@router.delete("/units/{unit_id}", status_code=204)
+def delete_unit(
+    unit_id: uuid.UUID,
+    user: User = Depends(require_roles("owner", "admin")),
+    db: Session = Depends(get_db),
+):
     item = db.get(Unit, unit_id)
     if item is None or item.organization_id != user.organization_id:
         raise HTTPException(404, "Unit not found")
