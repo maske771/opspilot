@@ -7,14 +7,17 @@
     {"type":"timeseries","title":"API p95 Latency","gridPos":{"h":8,"w":9,"x":15,"y":0},"targets":[{"expr":"histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"opspilot-api\"}[5m])))","legendFormat":"p95"}],"fieldConfig":{"defaults":{"unit":"s"},"overrides":[]}},
     {"type":"timeseries","title":"API 5xx Rate","gridPos":{"h":8,"w":9,"x":0,"y":8},"targets":[{"expr":"sum(rate(http_requests_total{job=\"opspilot-api\",status=~\"5..\"}[5m]))","legendFormat":"5xx/s"}],"fieldConfig":{"defaults":{},"overrides":[]}},
     {"type":"timeseries","title":"Container CPU","gridPos":{"h":8,"w":9,"x":9,"y":8},"targets":[{"expr":"sum by (name) (rate(container_cpu_usage_seconds_total{name!=\"\"}[5m]))","legendFormat":"{{name}}"}],"fieldConfig":{"defaults":{},"overrides":[]}},
-    {"type":"timeseries","title":"Container Memory","gridPos":{"h":8,"w":6,"x":18,"y":8},"targets":[{"expr":"sum by (name) (container_memory_usage_bytes{name!=\"\"})","legendFormat":"{{name}}"}],"fieldConfig":{"defaults":{"unit":"bytes"},"overrides":[]}}
+    {"type":"timeseries","title":"Container Memory","gridPos":{"h":8,"w":6,"x":18,"y":8},"targets":[{"expr":"sum by (name) (container_memory_usage_bytes{name!=\"\"})","legendFormat":"{{name}}"}],"fieldConfig":{"defaults":{"unit":"bytes"},"overrides":[]}},
+    {"type":"timeseries","title":"PostgreSQL Connections","gridPos":{"h":8,"w":8,"x":0,"y":16},"targets":[{"expr":"sum(pg_stat_database_numbackends{job=\"postgres-exporter\"})","legendFormat":"connections"}],"fieldConfig":{"defaults":{},"overrides":[]}},
+    {"type":"timeseries","title":"PostgreSQL Cache Hit Ratio","gridPos":{"h":8,"w":8,"x":8,"y":16},"targets":[{"expr":"sum(rate(pg_stat_database_blks_hit{job=\"postgres-exporter\"}[5m])) / clamp_min(sum(rate(pg_stat_database_blks_hit{job=\"postgres-exporter\"}[5m])) + sum(rate(pg_stat_database_blks_read{job=\"postgres-exporter\"}[5m])), 1)","legendFormat":"cache hit"}],"fieldConfig":{"defaults":{"unit":"percentunit","min":0,"max":1},"overrides":[]}},
+    {"type":"timeseries","title":"PostgreSQL Transactions","gridPos":{"h":8,"w":8,"x":16,"y":16},"targets":[{"expr":"sum(rate(pg_stat_database_xact_commit{job=\"postgres-exporter\"}[5m]))","legendFormat":"commits/s"},{"expr":"sum(rate(pg_stat_database_xact_rollback{job=\"postgres-exporter\"}[5m]))","legendFormat":"rollbacks/s"}],"fieldConfig":{"defaults":{},"overrides":[]}}
   ],
   "refresh":"15s",
   "schemaVersion":39,
-  "tags":["opspilot","infrastructure"],
+  "tags":["opspilot","infrastructure","postgresql"],
   "templating":{"list":[]},
   "time":{"from":"now-6h","to":"now"},
   "title":"OpsPilot Infrastructure",
   "uid":"opspilot-infra",
-  "version":1
+  "version":2
 }
