@@ -1,0 +1,74 @@
+groups:
+  - name: opspilot-availability
+    rules:
+      - alert: OpsPilotAPIDown
+        expr: up{job="opspilot-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: api
+        annotations:
+          summary: "OpsPilot API is down"
+          description: "Prometheus cannot scrape the OpsPilot API for more than 2 minutes."
+
+      - alert: OpsPilotPostgresExporterDown
+        expr: up{job="postgres-exporter"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: postgres
+        annotations:
+          summary: "OpsPilot PostgreSQL exporter is down"
+          description: "PostgreSQL metrics are unavailable for more than 2 minutes."
+
+      - alert: OpsPilotHighErrorRate
+        expr: sum(rate(http_requests_total{job="opspilot-api",status=~"5.."}[5m])) / clamp_min(sum(rate(http_requests_total{job="opspilot-api"}[5m])), 0.001) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          service: api
+        annotations:
+          summary: "OpsPilot API 5xx rate is above 5%"
+          description: "More than 5% of API requests have returned 5xx for 5 minutes."
+
+      - alert: OpsPilotHighLatency
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job="opspilot-api"}[5m]))) > 1.5
+        for: 10m
+        labels:
+          severity: warning
+          service: api
+        annotations:
+          summary: "OpsPilot API p95 latency is high"
+          description: "API p95 latency has exceeded 1.5 seconds for 10 minutes."
+
+  - name: opspilot-resources
+    rules:
+      - alert: OpsPilotHighContainerCPU
+        expr: sum by (name) (rate(container_cpu_usage_seconds_total{name=~"/opspilot.*"}[5m])) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+          service: infrastructure
+        annotations:
+          summary: "OpsPilot container CPU usage is high"
+          description: "Container {{ $labels.name }} is using more than 80% of one CPU for 10 minutes."
+
+      - alert: OpsPilotHighContainerMemory
+        expr: sum by (name) (container_memory_usage_bytes{name=~"/opspilot.*"}) > 1073741824
+        for: 10m
+        labels:
+          severity: warning
+          service: infrastructure
+        annotations:
+          summary: "OpsPilot container memory usage is high"
+          description: "Container {{ $labels.name }} is using more than 1 GiB for 10 minutes."
+
+      - alert: OpsPilotPostgresConnectionsHigh
+        expr: pg_stat_database_numbackends{datname="opspilot"} > 80
+        for: 10m
+        labels:
+          severity: warning
+          service: postgres
+        annotations:
+          summary: "OpsPilot PostgreSQL connections are high"
+          description: "The opspilot database has more than 80 active backend connections."
