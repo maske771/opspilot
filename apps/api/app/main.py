@@ -8,6 +8,8 @@ from .property_routes import router as properties_router
 from .unit_routes import router as units_router
 from .user_routes import router as users_router
 from .dashboard_routes import router as dashboard_router
+from .channel_routes import router as channel_router
+from .conversation_routes import router as conversation_router
 
 app = FastAPI(title="OpsPilot API", version="0.1.0")
 app.include_router(auth_router)
@@ -18,6 +20,8 @@ app.include_router(customers_router)
 app.include_router(properties_router)
 app.include_router(units_router)
 app.include_router(dashboard_router)
+app.include_router(channel_router)
+app.include_router(conversation_router)
 
 
 @app.get("/health")
