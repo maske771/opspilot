@@ -11,6 +11,15 @@ services:
     depends_on:
       - db
 
+  web:
+    build: ./apps/web
+    ports:
+      - "3001:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - api
+
   db:
     image: postgres:17-alpine
     environment:
