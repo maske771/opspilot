@@ -31,7 +31,7 @@ class PropertyRead(BaseModel):
     address: str | None
 
 
-@router.get("", response_model=list[Property])
+@router.get("", response_model=list[PropertyRead])
 def list_properties(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     return list(db.scalars(select(Property).where(Property.organization_id == user.organization_id).order_by(Property.name)).all())
 
