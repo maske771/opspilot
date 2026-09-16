@@ -5,9 +5,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .ai_intake import classify
+from .ai_response import GeneratedResponse, get_response_generator
 from .customer_match import find_customer, normalize_email, normalize_phone
 from .models import Conversation, Customer, CustomerIdentity, Message, Ticket, TicketStatus
 from .sla import calculate_sla
+
 
 @dataclass(frozen=True)
 class NormalizedEvent:
@@ -19,12 +21,14 @@ class NormalizedEvent:
     phone: str | None = None
     email: str | None = None
 
+
 def _first(mapping: dict[str, Any], *keys: str) -> Any:
     for key in keys:
         value = mapping.get(key)
         if value is not None:
             return value
     return None
+
 
 def normalize_event(provider: str, payload: dict[str, Any]) -> NormalizedEvent | None:
     provider = provider.lower()
@@ -72,6 +76,7 @@ def normalize_event(provider: str, payload: dict[str, Any]) -> NormalizedEvent |
             return NormalizedEvent(str(conversation_id), str(email), str(message_id) if message_id else None, str(text), customer_name=name, email=str(email))
     return None
 
+
 def ingest_normalized_event(db: Session, organization_id, channel, event: NormalizedEvent) -> tuple[dict[str, Any], bool, bool]:
     channel_type, channel_id = channel["type"], channel["id"]
     match = find_customer(
@@ -116,24 +121,86 @@ def ingest_normalized_event(db: Session, organization_id, channel, event: Normal
         ))
         db.flush()
 
-    conversation = db.scalar(select(Conversation).where(Conversation.organization_id == organization_id, Conversation.channel_id == channel_id, Conversation.external_conversation_id == event.external_conversation_id))
+    conversation = db.scalar(
+        select(Conversation).where(
+            Conversation.organization_id == organization_id,
+            Conversation.channel_id == channel_id,
+            Conversation.external_conversation_id == event.external_conversation_id,
+        )
+    )
     if conversation is None:
-        conversation = Conversation(organization_id=organization_id, customer_id=customer.id, channel_id=channel_id, external_conversation_id=event.external_conversation_id, status="open")
-        db.add(conversation); db.flush()
+        conversation = Conversation(
+            organization_id=organization_id,
+            customer_id=customer.id,
+            channel_id=channel_id,
+            external_conversation_id=event.external_conversation_id,
+            status="open",
+        )
+        db.add(conversation)
+        db.flush()
     elif conversation.customer_id is None:
         conversation.customer_id = customer.id
+
     message = None
     if event.external_message_id:
-        message = db.scalar(select(Message).where(Message.conversation_id == conversation.id, Message.external_message_id == event.external_message_id))
+        message = db.scalar(
+            select(Message).where(
+                Message.conversation_id == conversation.id,
+                Message.external_message_id == event.external_message_id,
+            )
+        )
     message_created = message is None
     if message is None:
-        message = Message(conversation_id=conversation.id, direction="inbound", content=event.text, external_message_id=event.external_message_id)
-        db.add(message); db.flush()
-    ticket = db.scalar(select(Ticket).where(Ticket.organization_id == organization_id, Ticket.conversation_id == conversation.id, Ticket.status != TicketStatus.CLOSED).order_by(Ticket.created_at.desc()))
+        message = Message(
+            conversation_id=conversation.id,
+            direction="inbound",
+            content=event.text,
+            external_message_id=event.external_message_id,
+        )
+        db.add(message)
+        db.flush()
+
+    ticket = db.scalar(
+        select(Ticket)
+        .where(
+            Ticket.organization_id == organization_id,
+            Ticket.conversation_id == conversation.id,
+            Ticket.status != TicketStatus.CLOSED,
+        )
+        .order_by(Ticket.created_at.desc())
+    )
     ticket_created = ticket is None
     if ticket is None:
         intake = classify(event.text)
-        ticket = Ticket(organization_id=organization_id, customer_id=customer.id, conversation_id=conversation.id, title=event.text[:255], description=event.text, category=intake.category, priority=intake.priority, status=TicketStatus.NEW)
-        db.add(ticket); db.flush()
+        ticket = Ticket(
+            organization_id=organization_id,
+            customer_id=customer.id,
+            conversation_id=conversation.id,
+            title=event.text[:255],
+            description=event.text,
+            category=intake.category,
+            priority=intake.priority,
+            status=TicketStatus.NEW,
+        )
+        db.add(ticket)
+        db.flush()
         ticket.response_deadline, ticket.resolution_deadline = calculate_sla(ticket.priority, ticket.created_at)
-    return {"customer_id": customer.id, "conversation_id": conversation.id, "message_id": message.id, "ticket_id": ticket.id}, message_created, ticket_created
+
+    response: GeneratedResponse = get_response_generator().generate(
+        customer_message=event.text,
+        category=ticket.category,
+        priority=ticket.priority.value,
+    )
+
+    return {
+        "customer_id": customer.id,
+        "conversation_id": conversation.id,
+        "message_id": message.id,
+        "ticket_id": ticket.id,
+        "ai_response": {
+            "text": response.text,
+            "provider": response.provider,
+            "confidence": response.confidence,
+            "sent": False,
+        },
+    }, message_created, ticket_created
