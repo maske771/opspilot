@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .ai_intake import classify
-from .ai_response import GeneratedResponse, get_response_generator
+from .ai_response import GeneratedResponse, generate_with_fallback
 from .customer_match import find_customer, normalize_email, normalize_phone
 from .models import Conversation, Customer, CustomerIdentity, Message, Ticket, TicketStatus
 from .sla import calculate_sla
@@ -186,7 +186,7 @@ def ingest_normalized_event(db: Session, organization_id, channel, event: Normal
         db.flush()
         ticket.response_deadline, ticket.resolution_deadline = calculate_sla(ticket.priority, ticket.created_at)
 
-    response: GeneratedResponse = get_response_generator().generate(
+    response: GeneratedResponse = generate_with_fallback(
         customer_message=event.text,
         category=ticket.category,
         priority=ticket.priority.value,
