@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from .ai_intake import classify
-from .ai_response import get_response_generator
+from .ai_response import generate_with_fallback
 from .customer_match import find_customer
 from .db import get_db
 
@@ -104,7 +104,7 @@ def generate_response(
     x_internal_api_key: str | None = Header(default=None),
 ):
     _check_internal_key(x_internal_api_key)
-    result = get_response_generator().generate(
+    result = generate_with_fallback(
         customer_message=payload.customer_message,
         category=payload.category,
         priority=payload.priority,
