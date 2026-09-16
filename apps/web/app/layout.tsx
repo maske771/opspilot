@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-aexport const metadata: Metadata = {
+export const metadata: Metadata = {
   title: 'OpsPilot',
   description: 'AI Operations Hub for Property Management',
 };
