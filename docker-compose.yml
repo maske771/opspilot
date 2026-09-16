@@ -4,7 +4,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://opspilot:opspilot@db:5432/opspilot
+      - DATABASE_URL=postgresql+psycopg://opspilot:opspilot@db:5432/opspilot
       - JWT_SECRET=${JWT_SECRET:-opspilot-dev-secret-change-me}
       - ACCESS_TOKEN_MINUTES=${ACCESS_TOKEN_MINUTES:-60}
     depends_on:
