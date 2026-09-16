@@ -1,10 +1,11 @@
 from dataclasses import dataclass
+from typing import Any
 
 from sqlalchemy.orm import Session
 
 from .ai_intake import classify
 from .ai_response import GeneratedResponse, get_response_generator
-from .customer_match import CustomerMatchResult, find_customer
+from .customer_match import CustomerMatch, find_customer
 
 
 @dataclass(frozen=True)
@@ -13,9 +14,9 @@ class AIPipelineResult:
     priority: str
     intake_confidence: float
     intake_reason: str
-    customer_id: object | None
-    customer_match_type: str | None
-    customer_match_confidence: float | None
+    customer_id: Any | None
+    customer_match_type: str
+    customer_match_confidence: float
     response: GeneratedResponse
 
 
@@ -30,7 +31,7 @@ def process_message(
     phone: str | None = None,
 ) -> AIPipelineResult:
     intake = classify(text)
-    match: CustomerMatchResult = find_customer(
+    match: CustomerMatch = find_customer(
         db,
         organization_id,
         channel_type=channel_type,
