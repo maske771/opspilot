@@ -49,6 +49,30 @@ docs/
   ai-agents.md
 ```
 
+## Test Center
+
+Test runs and individual pytest results are stored in PostgreSQL and available in the web UI at `/tests`.
+
+Local setup after pulling this feature branch:
+
+```powershell
+docker compose up -d db api
+Get-Content .\database\migrations\005_test_center.sql | docker compose exec -T db psql -U opspilot -d opspilot
+docker compose build api
+docker compose up -d --force-recreate api
+```
+
+To publish a local pytest report:
+
+```powershell
+cd .\apps\api
+pytest -q tests --junitxml=..\..\test-results.xml
+cd ..\..
+python .\scripts\publish_pytest_report.py .\test-results.xml
+```
+
+The API also publishes CI pytest results automatically after a successful GitHub Actions run.
+
 ## Status
 
 Foundation phase. Product and MVP specification are being implemented incrementally.
