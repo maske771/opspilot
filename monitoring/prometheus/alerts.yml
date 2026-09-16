@@ -56,3 +56,30 @@ groups:
         annotations:
           summary: Container memory usage is high
           description: Container memory usage exceeded 85% of its configured limit.
+
+      - alert: WindowsHostHighCPU
+        expr: 100 - (avg by (instance) (rate(windows_cpu_time_total{job="windows-exporter",mode="idle"}[5m])) * 100) > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Windows host CPU usage is high
+          description: Windows host CPU usage has exceeded 85% for 10 minutes.
+
+      - alert: WindowsHostHighMemory
+        expr: 100 - (100 * windows_memory_physical_free_bytes{job="windows-exporter"} / windows_memory_physical_total_bytes{job="windows-exporter"}) > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Windows host memory usage is high
+          description: Windows host memory usage has exceeded 90% for 10 minutes.
+
+      - alert: WindowsDiskSpaceLow
+        expr: 100 - 100 * (windows_logical_disk_free_bytes{job="windows-exporter",volume=~"[A-Z]:"} / windows_logical_disk_size_bytes{job="windows-exporter",volume=~"[A-Z]:"}) > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Windows disk space is low
+          description: Windows volume {{ $labels.volume }} has less than 10% free space.
