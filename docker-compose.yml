@@ -7,9 +7,7 @@ services:
       - DATABASE_URL=postgresql+psycopg://opspilot:opspilot@db:5432/opspilot
       - JWT_SECRET=${JWT_SECRET:-opspilot-dev-secret-change-me}
       - ACCESS_TOKEN_MINUTES=${ACCESS_TOKEN_MINUTES:-60}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-5.6-luna}
-      - OPENAI_TIMEOUT_SECONDS=${OPENAI_TIMEOUT_SECONDS:-15}
+      - TEST_CENTER_INGEST_TOKEN=${TEST_CENTER_INGEST_TOKEN:-opspilot-test-center-dev}
     depends_on:
       - db
 
@@ -23,6 +21,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./database/migrations:/migrations:ro
 
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:v0.18.0

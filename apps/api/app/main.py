@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from .auth_routes import router as auth_router
 from .organization_routes import router as organization_router
@@ -12,9 +13,17 @@ from .channel_routes import router as channel_router
 from .conversation_routes import router as conversation_router
 from .webhook_routes import router as webhook_router
 from .ai_routes import router as ai_router
+from .test_routes import router as test_center_router
 from .observability import instrumentator, router as observability_router
 
 app = FastAPI(title="OpsPilot API", version="0.1.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://localhost:3001"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.include_router(auth_router)
 app.include_router(organization_router)
 app.include_router(users_router)
@@ -27,6 +36,7 @@ app.include_router(channel_router)
 app.include_router(conversation_router)
 app.include_router(webhook_router)
 app.include_router(ai_router)
+app.include_router(test_center_router)
 app.include_router(observability_router)
 
 instrumentator.instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)

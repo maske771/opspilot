@@ -140,3 +140,37 @@ class Message(Base):
     content: Mapped[str] = mapped_column(Text())
     external_message_id: Mapped[str | None] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class TestRun(Base):
+    __tablename__ = "test_runs"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    suite: Mapped[str] = mapped_column(String(100), default="pytest")
+    commit_sha: Mapped[str | None] = mapped_column(String(64))
+    branch: Mapped[str | None] = mapped_column(String(255))
+    environment: Mapped[str] = mapped_column(String(100), default="local")
+    status: Mapped[str] = mapped_column(String(30), index=True)
+    total: Mapped[int] = mapped_column(default=0)
+    passed: Mapped[int] = mapped_column(default=0)
+    failed: Mapped[int] = mapped_column(default=0)
+    skipped: Mapped[int] = mapped_column(default=0)
+    errors: Mapped[int] = mapped_column(default=0)
+    duration_ms: Mapped[int] = mapped_column(default=0)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class TestCaseResult(Base):
+    __tablename__ = "test_case_results"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("test_runs.id", ondelete="CASCADE"), index=True)
+    node_id: Mapped[str] = mapped_column(String(500))
+    name: Mapped[str] = mapped_column(String(500))
+    file_path: Mapped[str | None] = mapped_column(String(500))
+    class_name: Mapped[str | None] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(30), index=True)
+    duration_ms: Mapped[int] = mapped_column(default=0)
+    message: Mapped[str | None] = mapped_column(Text())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (UniqueConstraint("run_id", "node_id", name="uq_test_case_run_node"),)
