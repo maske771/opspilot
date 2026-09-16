@@ -44,19 +44,24 @@ jobs:
             psql -h localhost -U opspilot -d opspilot -v ON_ERROR_STOP=1 -f "$file"
           done
       - name: Run pytest
+        id: pytest
         working-directory: apps/api
         env:
           PYTHONPATH: ${{ github.workspace }}/apps/api
+        continue-on-error: true
         run: pytest -q tests --junitxml=../../test-results.xml
       - name: Start API
+        if: always()
         run: |
           uvicorn app.main:app --app-dir apps/api --host 127.0.0.1 --port 8000 > /tmp/opspilot-api.log 2>&1 &
           for i in {1..30}; do curl -fsS http://127.0.0.1:8000/health && break; sleep 1; done
       - name: API smoke test
+        if: always()
         env:
           PYTHONUNBUFFERED: '1'
         run: python scripts/api_smoke_test.py
       - name: Publish test results
+        if: always() && hashFiles('test-results.xml') != ''
         run: python scripts/publish_pytest_report.py test-results.xml --url http://127.0.0.1:8000/test-center/runs
       - name: Upload JUnit report
         if: always()
@@ -64,6 +69,9 @@ jobs:
         with:
           name: pytest-junit-report
           path: test-results.xml
+      - name: Fail when pytest failed
+        if: steps.pytest.outcome == 'failure'
+        run: exit 1
       - name: API logs on failure
         if: failure()
         run: cat /tmp/opspilot-api.log || true
