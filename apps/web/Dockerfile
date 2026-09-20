@@ -6,6 +6,7 @@ COPY package.json ./
 RUN npm install
 
 COPY app ./app
+COPY public ./public
 COPY next.config.mjs ./
 
 ARG NEXT_PUBLIC_API_URL
