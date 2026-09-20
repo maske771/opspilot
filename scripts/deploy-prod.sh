@@ -3,9 +3,13 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-set -a
-source .env
-set +a
+env_val() {
+    grep -E "^$1=" .env | head -1 | cut -d= -f2-
+}
+
+BASE_DOMAIN=$(env_val BASE_DOMAIN)
+PROM_BASIC_AUTH_USER=$(env_val PROM_BASIC_AUTH_USER)
+PROM_BASIC_AUTH_HASH=$(env_val PROM_BASIC_AUTH_HASH)
 
 sed \
     -e "s/__BASE_DOMAIN__/${BASE_DOMAIN}/g" \
