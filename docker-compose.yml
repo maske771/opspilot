@@ -4,17 +4,17 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://opspilot:opspilot@db:5432/opspilot
+      - DATABASE_URL=postgresql+psycopg://opspilot:opspilot_dev@db:5432/opspilot
       - JWT_SECRET=${JWT_SECRET:-opspilot-dev-secret-change-me}
       - ACCESS_TOKEN_MINUTES=${ACCESS_TOKEN_MINUTES:-60}
     depends_on:
       - db
 
   db:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     environment:
       POSTGRES_USER: opspilot
-      POSTGRES_PASSWORD: opspilot
+      POSTGRES_PASSWORD: opspilot_dev
       POSTGRES_DB: opspilot
     ports:
       - "5432:5432"
@@ -24,7 +24,7 @@ services:
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:v0.18.0
     environment:
-      - DATA_SOURCE_NAME=postgresql://opspilot:opspilot@db:5432/opspilot?sslmode=disable
+      - DATA_SOURCE_NAME=postgresql://opspilot:opspilot_dev@db:5432/opspilot?sslmode=disable
     depends_on:
       - db
 
