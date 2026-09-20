@@ -1,0 +1,12 @@
+.env
+.env.*.local
+infra/caddy/Caddyfile
+
+__pycache__/
+*.pyc
+.venv/
+
+node_modules/
+.next/
+
+.DS_Store

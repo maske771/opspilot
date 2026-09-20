@@ -1,0 +1,117 @@
+services:
+  api:
+    build: ./apps/api
+    environment:
+      - DATABASE_URL=postgresql+psycopg://opspilot:${POSTGRES_PASSWORD}@db:5432/opspilot
+      - JWT_SECRET=${JWT_SECRET}
+      - ACCESS_TOKEN_MINUTES=${ACCESS_TOKEN_MINUTES:-60}
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: opspilot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: opspilot
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/migrations:/docker-entrypoint-initdb.d:ro
+    restart: unless-stopped
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.18.0
+    environment:
+      - DATA_SOURCE_NAME=postgresql://opspilot:${POSTGRES_PASSWORD}@db:5432/opspilot?sslmode=disable
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.53.0
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.6.0
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - api
+      - postgres-exporter
+      - cadvisor
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.30.0
+    environment:
+      - ALERTMANAGER_SMTP_SMARTHOST=${ALERTMANAGER_SMTP_SMARTHOST:-smtp.example.com:587}
+      - ALERTMANAGER_SMTP_FROM=${ALERTMANAGER_SMTP_FROM:-opspilot@example.com}
+      - ALERTMANAGER_SMTP_USERNAME=${ALERTMANAGER_SMTP_USERNAME:-opspilot@example.com}
+      - ALERTMANAGER_SMTP_PASSWORD=${ALERTMANAGER_SMTP_PASSWORD:-change-me}
+      - ALERTMANAGER_EMAIL_TO=${ALERTMANAGER_EMAIL_TO:-ops@example.com}
+      - ALERTMANAGER_TELEGRAM_BOT_TOKEN=${ALERTMANAGER_TELEGRAM_BOT_TOKEN:-replace-me}
+      - ALERTMANAGER_TELEGRAM_CHAT_ID=${ALERTMANAGER_TELEGRAM_CHAT_ID:-0}
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    depends_on:
+      - prometheus
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:12.1.1
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=https://grafana.${BASE_DOMAIN}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+      - alertmanager
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - grafana
+      - prometheus
+      - alertmanager
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  prometheus_data:
+  grafana_data:
+  alertmanager_data:
+  caddy_data:
+  caddy_config:
