@@ -67,13 +67,14 @@ services:
       - ALERTMANAGER_TELEGRAM_BOT_TOKEN=${ALERTMANAGER_TELEGRAM_BOT_TOKEN:-replace-me}
       - ALERTMANAGER_TELEGRAM_CHAT_ID=${ALERTMANAGER_TELEGRAM_CHAT_ID:-0}
     volumes:
-      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./monitoring/alertmanager/alertmanager.yml.tpl:/etc/alertmanager/alertmanager.yml.tpl:ro
+      - ./monitoring/alertmanager/entrypoint.sh:/usr/local/bin/opspilot-alertmanager-entrypoint.sh:ro
       - alertmanager_data:/alertmanager
     depends_on:
       - prometheus
-    command:
-      - "--config.file=/etc/alertmanager/alertmanager.yml"
-      - "--storage.path=/alertmanager"
+    entrypoint:
+      - "/bin/sh"
+      - "/usr/local/bin/opspilot-alertmanager-entrypoint.sh"
     restart: unless-stopped
 
   grafana:
