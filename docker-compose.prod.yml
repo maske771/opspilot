@@ -5,8 +5,18 @@ services:
       - DATABASE_URL=postgresql+psycopg://opspilot:${POSTGRES_PASSWORD}@db:5432/opspilot
       - JWT_SECRET=${JWT_SECRET}
       - ACCESS_TOKEN_MINUTES=${ACCESS_TOKEN_MINUTES:-60}
+      - CORS_ORIGINS=https://${BASE_DOMAIN}
     depends_on:
       - db
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./apps/web
+      args:
+        NEXT_PUBLIC_API_URL: https://api.${BASE_DOMAIN}
+    depends_on:
+      - api
     restart: unless-stopped
 
   db:
