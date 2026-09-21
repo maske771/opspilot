@@ -9,6 +9,11 @@ from sqlalchemy.orm import Mapped, mapped_column
 from .db import Base
 
 
+def pg_enum(enum_cls: type[enum.Enum], name: str) -> Enum:
+    """Store Postgres enums by their .value (e.g. "owner"), not the member .name ("OWNER")."""
+    return Enum(enum_cls, name=name, values_callable=lambda cls: [member.value for member in cls])
+
+
 class UserRole(str, enum.Enum):
     OWNER = "owner"
     ADMIN = "admin"
@@ -47,7 +52,7 @@ class User(Base):
     organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
     email: Mapped[str] = mapped_column(String(320))
     password_hash: Mapped[str] = mapped_column(String(255))
-    role: Mapped[UserRole] = mapped_column(Enum(UserRole, name="user_role"), default=UserRole.STAFF)
+    role: Mapped[UserRole] = mapped_column(pg_enum(UserRole, "user_role"), default=UserRole.STAFF)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     __table_args__ = (UniqueConstraint("organization_id", "email", name="uq_users_org_email"),)
 
@@ -100,8 +105,8 @@ class Ticket(Base):
     title: Mapped[str] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(Text())
     category: Mapped[str] = mapped_column(String(100), default="other")
-    priority: Mapped[TicketPriority] = mapped_column(Enum(TicketPriority, name="ticket_priority"), default=TicketPriority.MEDIUM)
-    status: Mapped[TicketStatus] = mapped_column(Enum(TicketStatus, name="ticket_status"), default=TicketStatus.NEW)
+    priority: Mapped[TicketPriority] = mapped_column(pg_enum(TicketPriority, "ticket_priority"), default=TicketPriority.MEDIUM)
+    status: Mapped[TicketStatus] = mapped_column(pg_enum(TicketStatus, "ticket_status"), default=TicketStatus.NEW)
     assignee_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     response_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     resolution_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
