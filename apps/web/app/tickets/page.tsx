@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Nav } from '../components/Nav';
 import { RequireAuth, useAuth } from '../lib/auth';
 import { apiFetch, type TicketPriority, type TicketRead, type TicketStatus } from '../lib/api';
@@ -170,10 +171,10 @@ function TicketsList() {
                     borderBottom: '1px solid #f0f0f0',
                   }}
                 >
-                  <div>
+                  <Link href={`/tickets/${ticket.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                     <div style={{ fontWeight: 600 }}>{ticket.title}</div>
                     <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>{ticket.category}</div>
-                  </div>
+                  </Link>
                   <Badge text={PRIORITY_LABELS[ticket.priority]} color={
                     ticket.priority === 'critical' ? '#991b1b'
                     : ticket.priority === 'high' ? '#b45309'

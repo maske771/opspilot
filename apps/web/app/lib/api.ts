@@ -80,6 +80,28 @@ export type TicketRead = {
   updated_at: string;
 };
 
+export type PropertyRead = {
+  id: string;
+  organization_id: string;
+  name: string;
+  address: string | null;
+};
+
+export type UnitRead = {
+  id: string;
+  organization_id: string;
+  property_id: string;
+  unit_number: string;
+};
+
+export type CustomerRead = {
+  id: string;
+  organization_id: string;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+};
+
 export type DashboardSummary = {
   tickets_total: number;
   tickets_open: number;
