@@ -111,6 +111,15 @@ export type MessageRead = {
   created_at: string;
 };
 
+export type InboxItem = {
+  conversation_id: string;
+  customer: { id: string; name: string | null } | null;
+  channel: { id: string; type: string; name: string };
+  last_message: { content: string; direction: 'inbound' | 'outbound'; created_at: string } | null;
+  ticket: { id: string; status: TicketStatus; priority: TicketPriority; assignee_id: string | null } | null;
+  updated_at: string;
+};
+
 export type DashboardSummary = {
   tickets_total: number;
   tickets_open: number;

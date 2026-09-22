@@ -3,10 +3,18 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../lib/auth';
+import { isManagerRole } from '../lib/roles';
 
-const links = [
-  { href: '/', label: 'Dashboard' },
+const MANAGER_LINKS = [
+  { href: '/', label: 'Inbox' },
+  { href: '/dashboard', label: 'Dashboard' },
   { href: '/tickets', label: 'Tickets' },
+  { href: '/properties', label: 'Properties' },
+  { href: '/customers', label: 'Customers' },
+];
+
+const FIELD_LINKS = [
+  { href: '/', label: 'My Tickets' },
   { href: '/properties', label: 'Properties' },
   { href: '/customers', label: 'Customers' },
 ];
@@ -14,34 +22,20 @@ const links = [
 export function Nav() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
+  const links = isManagerRole(user?.role) ? MANAGER_LINKS : FIELD_LINKS;
 
   return (
-    <header
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '14px 32px',
-        borderBottom: '1px solid #e5e7eb',
-        background: '#fff',
-      }}
-    >
+    <header className="nav">
       <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
-        <span style={{ fontWeight: 800, fontSize: 16 }}>OpsPilot</span>
-        <nav style={{ display: 'flex', gap: 18 }}>
+        <span className="nav-brand">
+          <span className="nav-brand-mark" />
+          OpsPilot
+        </span>
+        <nav className="nav-links">
           {links.map((link) => {
             const active = link.href === '/' ? pathname === '/' : pathname.startsWith(link.href);
             return (
-              <Link
-                key={link.href}
-                href={link.href}
-                style={{
-                  fontSize: 14,
-                  color: active ? '#111827' : '#6b7280',
-                  fontWeight: active ? 700 : 400,
-                  textDecoration: 'none',
-                }}
-              >
+              <Link key={link.href} href={link.href} className={`nav-link${active ? ' nav-link-active' : ''}`}>
                 {link.label}
               </Link>
             );
@@ -49,18 +43,8 @@ export function Nav() {
         </nav>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        {user && <span style={{ fontSize: 13, color: '#6b7280' }}>{user.email}</span>}
-        <button
-          onClick={logout}
-          style={{
-            padding: '7px 12px',
-            borderRadius: 8,
-            border: '1px solid #d1d5db',
-            background: '#fff',
-            fontSize: 13,
-            cursor: 'pointer',
-          }}
-        >
+        {user && <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{user.email}</span>}
+        <button onClick={logout} className="btn btn-secondary">
           Выйти
         </button>
       </div>

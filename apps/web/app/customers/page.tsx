@@ -54,57 +54,36 @@ function CustomersList() {
   return (
     <>
       <Nav />
-      <main style={{ maxWidth: 900, margin: '0 auto', padding: 32 }}>
-        <h1 style={{ fontSize: 26, marginBottom: 20 }}>Customers</h1>
+      <main className="page">
+        <h1 className="page-title">Customers</h1>
+        <p className="page-subtitle">Клиенты и их контактные данные.</p>
 
-        <form
-          onSubmit={createCustomer}
-          style={{
-            display: 'flex',
-            gap: 10,
-            marginBottom: 24,
-            padding: 16,
-            border: '1px solid #e5e7eb',
-            borderRadius: 12,
-            background: '#fff',
-          }}
-        >
-          <input required placeholder="Имя" value={name} onChange={(e) => setName(e.target.value)} style={{ ...input, flex: 1 }} />
-          <input placeholder="Телефон" value={phone} onChange={(e) => setPhone(e.target.value)} style={{ ...input, flex: 1 }} />
-          <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} style={{ ...input, flex: 1 }} />
-          <button type="submit" disabled={creating} style={button}>
+        <form onSubmit={createCustomer} className="card card-pad" style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
+          <input required placeholder="Имя" value={name} onChange={(e) => setName(e.target.value)} className="input" style={{ flex: 1 }} />
+          <input placeholder="Телефон" value={phone} onChange={(e) => setPhone(e.target.value)} className="input" style={{ flex: 1 }} />
+          <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="input" style={{ flex: 1 }} />
+          <button type="submit" disabled={creating} className="btn btn-accent">
             {creating ? 'Добавление...' : 'Добавить'}
           </button>
         </form>
 
         {error && (
-          <div style={{ padding: 14, borderRadius: 10, background: '#fee2e2', color: '#991b1b', marginBottom: 20 }}>
+          <div style={{ padding: 14, borderRadius: 10, background: 'var(--color-danger-soft)', color: 'var(--color-danger)', marginBottom: 20 }}>
             {error}
           </div>
         )}
 
         {loading ? (
-          <p style={{ color: '#6b7280' }}>Загрузка...</p>
+          <p style={{ color: 'var(--color-text-muted)' }}>Загрузка...</p>
         ) : customers.length === 0 ? (
-          <div style={{ border: '1px dashed #d1d5db', borderRadius: 16, padding: 40, textAlign: 'center', color: '#6b7280' }}>
-            Клиентов пока нет.
-          </div>
+          <div className="empty-state">Клиентов пока нет.</div>
         ) : (
-          <div style={{ border: '1px solid #e5e7eb', borderRadius: 14, overflow: 'hidden', background: '#fff' }}>
+          <div className="card">
             {customers.map((customer) => (
-              <div
-                key={customer.id}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1.4fr 1fr 1fr',
-                  gap: 12,
-                  padding: 16,
-                  borderBottom: '1px solid #f0f0f0',
-                }}
-              >
-                <div style={{ fontWeight: 600 }}>{customer.name ?? '—'}</div>
-                <div style={{ fontSize: 13, color: '#6b7280' }}>{customer.phone ?? '—'}</div>
-                <div style={{ fontSize: 13, color: '#6b7280' }}>{customer.email ?? '—'}</div>
+              <div key={customer.id} className="list-row" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr', gap: 12 }}>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>{customer.name ?? '—'}</div>
+                <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{customer.phone ?? '—'}</div>
+                <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{customer.email ?? '—'}</div>
               </div>
             ))}
           </div>
@@ -113,23 +92,6 @@ function CustomersList() {
     </>
   );
 }
-
-const input: React.CSSProperties = {
-  padding: '9px 12px',
-  borderRadius: 8,
-  border: '1px solid #d1d5db',
-  fontSize: 14,
-};
-const button: React.CSSProperties = {
-  padding: '9px 16px',
-  borderRadius: 8,
-  border: 0,
-  background: '#111827',
-  color: '#fff',
-  fontSize: 14,
-  cursor: 'pointer',
-  whiteSpace: 'nowrap',
-};
 
 export default function CustomersPage() {
   return (

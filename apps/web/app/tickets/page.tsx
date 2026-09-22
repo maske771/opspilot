@@ -4,81 +4,61 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Nav } from '../components/Nav';
 import { RequireAuth, useAuth } from '../lib/auth';
-import { apiFetch, type TicketPriority, type TicketRead, type TicketStatus } from '../lib/api';
+import { apiFetch, type TicketPriority, type TicketRead, type TicketStatus, type UserRead } from '../lib/api';
+import { PRIORITY_LABELS, STATUS_LABELS, priorityBadgeStyle, statusBadgeStyle } from '../lib/ui';
 
-const STATUS_LABELS: Record<TicketStatus, string> = {
-  new: 'New',
-  assigned: 'Assigned',
-  accepted: 'Accepted',
-  in_progress: 'In progress',
-  completed: 'Completed',
-  waiting_approval: 'Waiting approval',
-  closed: 'Closed',
+const NEXT_ACTION: Partial<Record<TicketStatus, { label: string; action: string }>> = {
+  assigned: { label: 'Accept', action: 'accept' },
+  accepted: { label: 'Start', action: 'start' },
+  in_progress: { label: 'Complete', action: 'complete' },
+  completed: { label: 'Close', action: 'close' },
 };
 
-const STATUS_COLORS: Record<TicketStatus, string> = {
-  new: '#1d4ed8',
-  assigned: '#7c3aed',
-  accepted: '#0891b2',
-  in_progress: '#b45309',
-  completed: '#15803d',
-  waiting_approval: '#a16207',
-  closed: '#6b7280',
-};
-
-const PRIORITY_LABELS: Record<TicketPriority, string> = {
-  critical: 'Critical',
-  high: 'High',
-  medium: 'Medium',
-  low: 'Low',
-};
-
-const NEXT_ACTION: Partial<Record<TicketStatus, { label: string; action: string; next: TicketStatus }>> = {
-  assigned: { label: 'Accept', action: 'accept', next: 'accepted' },
-  accepted: { label: 'Start', action: 'start', next: 'in_progress' },
-  in_progress: { label: 'Complete', action: 'complete', next: 'completed' },
-  completed: { label: 'Close', action: 'close', next: 'closed' },
-};
-
-function Badge({ text, color }: { text: string; color: string }) {
+function Badge({ text, style }: { text: string; style: React.CSSProperties }) {
   return (
-    <span
-      style={{
-        display: 'inline-block',
-        padding: '3px 9px',
-        borderRadius: 999,
-        fontSize: 12,
-        fontWeight: 700,
-        color: '#fff',
-        background: color,
-      }}
-    >
+    <span className="badge" style={style}>
       {text}
     </span>
   );
 }
 
-function TicketsList() {
-  const { token } = useAuth();
+export function TicketsList({
+  title = 'Tickets',
+  defaultAssignee = '',
+}: {
+  title?: string;
+  defaultAssignee?: 'me' | '';
+}) {
+  const { token, user } = useAuth();
   const [tickets, setTickets] = useState<TicketRead[]>([]);
+  const [users, setUsers] = useState<UserRead[]>([]);
   const [statusFilter, setStatusFilter] = useState<TicketStatus | ''>('');
   const [priorityFilter, setPriorityFilter] = useState<TicketPriority | ''>('');
+  const [assigneeFilter, setAssigneeFilter] = useState<'me' | 'unassigned' | ''>(defaultAssignee);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    if (!token) return;
+    if (!token || !user) return;
     setLoading(true);
     setError(null);
     const params = new URLSearchParams();
     if (statusFilter) params.set('status', statusFilter);
     if (priorityFilter) params.set('priority', priorityFilter);
-    apiFetch<TicketRead[]>(`/tickets?${params.toString()}`, { token })
-      .then(setTickets)
+    if (assigneeFilter === 'me') params.set('assignee_id', user.id);
+    if (assigneeFilter === 'unassigned') params.set('unassigned', 'true');
+    Promise.all([
+      apiFetch<TicketRead[]>(`/tickets?${params.toString()}`, { token }),
+      apiFetch<UserRead[]>('/users', { token }),
+    ])
+      .then(([t, u]) => {
+        setTickets(t);
+        setUsers(u);
+      })
       .catch((err) => setError(err instanceof Error ? err.message : 'Не удалось загрузить тикеты'))
       .finally(() => setLoading(false));
-  }, [token, statusFilter, priorityFilter]);
+  }, [token, user, statusFilter, priorityFilter, assigneeFilter]);
 
   useEffect(() => {
     load();
@@ -98,26 +78,26 @@ function TicketsList() {
     }
   }
 
+  function assigneeLabel(id: string | null) {
+    if (!id) return 'Unassigned';
+    const u = users.find((x) => x.id === id);
+    return u ? u.email.split('@')[0] : 'Unknown';
+  }
+
   return (
     <>
       <Nav />
-      <main style={{ maxWidth: 1080, margin: '0 auto', padding: 32 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h1 style={{ fontSize: 26, margin: 0 }}>Tickets</h1>
-          <button
-            onClick={load}
-            style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer' }}
-          >
+      <main className="page">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+          <h1 className="page-title" style={{ marginBottom: 0 }}>{title}</h1>
+          <button onClick={load} className="btn btn-secondary">
             Обновить
           </button>
         </div>
+        <p className="page-subtitle">Все обращения, требующие внимания.</p>
 
-        <div style={{ display: 'flex', gap: 12, marginBottom: 18 }}>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as TicketStatus | '')}
-            style={select}
-          >
+        <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as TicketStatus | '')} className="select">
             <option value="">Все статусы</option>
             {Object.entries(STATUS_LABELS).map(([value, label]) => (
               <option key={value} value={value}>
@@ -125,11 +105,7 @@ function TicketsList() {
               </option>
             ))}
           </select>
-          <select
-            value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value as TicketPriority | '')}
-            style={select}
-          >
+          <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value as TicketPriority | '')} className="select">
             <option value="">Все приоритеты</option>
             {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
               <option key={value} value={value}>
@@ -137,22 +113,29 @@ function TicketsList() {
               </option>
             ))}
           </select>
+          <select
+            value={assigneeFilter}
+            onChange={(e) => setAssigneeFilter(e.target.value as 'me' | 'unassigned' | '')}
+            className="select"
+          >
+            <option value="">Все исполнители</option>
+            <option value="me">Назначено мне</option>
+            <option value="unassigned">Без исполнителя</option>
+          </select>
         </div>
 
         {error && (
-          <div style={{ padding: 14, borderRadius: 10, background: '#fee2e2', color: '#991b1b', marginBottom: 20 }}>
+          <div style={{ padding: 14, borderRadius: 10, background: 'var(--color-danger-soft)', color: 'var(--color-danger)', marginBottom: 20 }}>
             {error}
           </div>
         )}
 
         {loading ? (
-          <p style={{ color: '#6b7280' }}>Загрузка...</p>
+          <p style={{ color: 'var(--color-text-muted)' }}>Загрузка...</p>
         ) : tickets.length === 0 ? (
-          <div style={{ border: '1px dashed #d1d5db', borderRadius: 16, padding: 40, textAlign: 'center', color: '#6b7280' }}>
-            Тикетов не найдено.
-          </div>
+          <div className="empty-state">Тикетов не найдено.</div>
         ) : (
-          <div style={{ border: '1px solid #e5e7eb', borderRadius: 14, overflow: 'hidden', background: '#fff' }}>
+          <div className="card">
             {tickets.map((ticket) => {
               const next = NEXT_ACTION[ticket.status];
               const overdue =
@@ -162,43 +145,22 @@ function TicketsList() {
               return (
                 <div
                   key={ticket.id}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1.6fr 130px 120px 140px 120px',
-                    gap: 12,
-                    alignItems: 'center',
-                    padding: 16,
-                    borderBottom: '1px solid #f0f0f0',
-                  }}
+                  className="list-row"
+                  style={{ display: 'grid', gridTemplateColumns: '1.6fr 110px 130px 120px 110px 110px', gap: 12, alignItems: 'center' }}
                 >
-                  <Link href={`/tickets/${ticket.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                    <div style={{ fontWeight: 600 }}>{ticket.title}</div>
-                    <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>{ticket.category}</div>
+                  <Link href={`/tickets/${ticket.id}`} className="link-reset">
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{ticket.title}</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-subtle)', marginTop: 3 }}>{ticket.category}</div>
                   </Link>
-                  <Badge text={PRIORITY_LABELS[ticket.priority]} color={
-                    ticket.priority === 'critical' ? '#991b1b'
-                    : ticket.priority === 'high' ? '#b45309'
-                    : ticket.priority === 'medium' ? '#1d4ed8'
-                    : '#6b7280'
-                  } />
-                  <Badge text={STATUS_LABELS[ticket.status]} color={STATUS_COLORS[ticket.status]} />
-                  <div style={{ fontSize: 12, color: overdue ? '#991b1b' : '#6b7280' }}>
-                    {overdue ? 'Просрочен' : ticket.resolution_deadline ? new Date(ticket.resolution_deadline).toLocaleString() : '—'}
+                  <Badge text={PRIORITY_LABELS[ticket.priority]} style={priorityBadgeStyle(ticket.priority)} />
+                  <Badge text={STATUS_LABELS[ticket.status]} style={statusBadgeStyle(ticket.status)} />
+                  <div style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>{assigneeLabel(ticket.assignee_id)}</div>
+                  <div style={{ fontSize: 12, color: overdue ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
+                    {overdue ? 'Просрочен' : ticket.resolution_deadline ? new Date(ticket.resolution_deadline).toLocaleDateString() : '—'}
                   </div>
                   <div>
                     {next && (
-                      <button
-                        onClick={() => advance(ticket)}
-                        disabled={busyId === ticket.id}
-                        style={{
-                          padding: '6px 12px',
-                          borderRadius: 8,
-                          border: '1px solid #d1d5db',
-                          background: '#fff',
-                          fontSize: 13,
-                          cursor: 'pointer',
-                        }}
-                      >
+                      <button onClick={() => advance(ticket)} disabled={busyId === ticket.id} className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: 12.5 }}>
                         {busyId === ticket.id ? '...' : next.label}
                       </button>
                     )}
@@ -212,14 +174,6 @@ function TicketsList() {
     </>
   );
 }
-
-const select: React.CSSProperties = {
-  padding: '8px 12px',
-  borderRadius: 8,
-  border: '1px solid #d1d5db',
-  fontSize: 14,
-  background: '#fff',
-};
 
 export default function TicketsPage() {
   return (

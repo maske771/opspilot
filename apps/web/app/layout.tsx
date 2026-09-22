@@ -1,5 +1,9 @@
 import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
 import { AuthProvider } from './lib/auth';
+import './globals.css';
+
+const inter = Inter({ subsets: ['latin', 'cyrillic'], display: 'swap' });
 
 export const metadata: Metadata = {
   title: 'OpsPilot',
@@ -8,8 +12,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body style={{ margin: 0, background: '#f9fafb', fontFamily: 'Arial, sans-serif', color: '#111827' }}>
+    <html lang="en" className={inter.className}>
+      <body>
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

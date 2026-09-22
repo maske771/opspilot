@@ -33,71 +33,34 @@ export default function RegisterPage() {
   }
 
   return (
-    <main style={{ maxWidth: 380, margin: '80px auto', padding: 24 }}>
-      <h1 style={{ fontSize: 24, marginBottom: 24 }}>Новая компания</h1>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <label style={fieldLabel}>
-          Название компании
-          <input
-            required
-            value={organizationName}
-            onChange={(e) => setOrganizationName(e.target.value)}
-            style={input}
-          />
-        </label>
-        <label style={fieldLabel}>
-          Email
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={input}
-          />
-        </label>
-        <label style={fieldLabel}>
-          Пароль
-          <input
-            type="password"
-            required
-            minLength={8}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={input}
-          />
-        </label>
-        {error && <div style={{ color: '#991b1b', fontSize: 13 }}>{error}</div>}
-        <button type="submit" disabled={submitting} style={button}>
-          {submitting ? 'Создание...' : 'Создать аккаунт'}
-        </button>
-      </form>
-      <p style={{ marginTop: 16, fontSize: 13, color: '#6b7280' }}>
-        Уже есть аккаунт? <a href="/login">Войти</a>
-      </p>
+    <main style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div className="card card-pad" style={{ width: '100%', maxWidth: 380, boxShadow: 'var(--shadow-md)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
+          <span className="nav-brand-mark" style={{ width: 28, height: 28, borderRadius: 9 }} />
+          <span style={{ fontWeight: 800, fontSize: 18, letterSpacing: '-0.01em' }}>Новая компания</span>
+        </div>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <label className="field">
+            Название компании
+            <input required value={organizationName} onChange={(e) => setOrganizationName(e.target.value)} className="input" />
+          </label>
+          <label className="field">
+            Email
+            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="input" />
+          </label>
+          <label className="field">
+            Пароль
+            <input type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className="input" />
+          </label>
+          {error && <div style={{ color: 'var(--color-danger)', fontSize: 13 }}>{error}</div>}
+          <button type="submit" disabled={submitting} className="btn btn-accent" style={{ marginTop: 6 }}>
+            {submitting ? 'Создание...' : 'Создать аккаунт'}
+          </button>
+        </form>
+        <p style={{ marginTop: 18, fontSize: 13, color: 'var(--color-text-muted)' }}>
+          Уже есть аккаунт? <a href="/login" style={{ color: 'var(--color-accent)', fontWeight: 500 }}>Войти</a>
+        </p>
+      </div>
     </main>
   );
 }
-
-const fieldLabel: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 6,
-  fontSize: 13,
-  color: '#374151',
-};
-const input: React.CSSProperties = {
-  padding: '10px 12px',
-  borderRadius: 8,
-  border: '1px solid #d1d5db',
-  fontSize: 14,
-};
-const button: React.CSSProperties = {
-  padding: '10px 16px',
-  borderRadius: 8,
-  border: 0,
-  background: '#111827',
-  color: '#fff',
-  fontSize: 14,
-  cursor: 'pointer',
-  marginTop: 8,
-};

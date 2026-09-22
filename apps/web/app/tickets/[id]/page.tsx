@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Nav } from '../../components/Nav';
+import { MessageTimeline } from '../../components/MessageTimeline';
 import { RequireAuth, useAuth } from '../../lib/auth';
 import {
   apiFetch,
@@ -15,33 +16,7 @@ import {
   type TicketStatus,
   type UserRead,
 } from '../../lib/api';
-
-const STATUS_LABELS: Record<TicketStatus, string> = {
-  new: 'New',
-  assigned: 'Assigned',
-  accepted: 'Accepted',
-  in_progress: 'In progress',
-  completed: 'Completed',
-  waiting_approval: 'Waiting approval',
-  closed: 'Closed',
-};
-
-const STATUS_COLORS: Record<TicketStatus, string> = {
-  new: '#1d4ed8',
-  assigned: '#7c3aed',
-  accepted: '#0891b2',
-  in_progress: '#b45309',
-  completed: '#15803d',
-  waiting_approval: '#a16207',
-  closed: '#6b7280',
-};
-
-const PRIORITY_LABELS: Record<TicketPriority, string> = {
-  critical: 'Critical',
-  high: 'High',
-  medium: 'Medium',
-  low: 'Low',
-};
+import { PRIORITY_LABELS, STATUS_LABELS, priorityBadgeStyle, statusBadgeStyle } from '../../lib/ui';
 
 const AVAILABLE_ACTIONS: Record<TicketStatus, { action: string; label: string }[]> = {
   new: [
@@ -68,24 +43,6 @@ const AVAILABLE_ACTIONS: Record<TicketStatus, { action: string; label: string }[
   ],
   closed: [],
 };
-
-function Badge({ text, color }: { text: string; color: string }) {
-  return (
-    <span
-      style={{
-        display: 'inline-block',
-        padding: '3px 10px',
-        borderRadius: 999,
-        fontSize: 12,
-        fontWeight: 700,
-        color: '#fff',
-        background: color,
-      }}
-    >
-      {text}
-    </span>
-  );
-}
 
 function TicketDetail() {
   const { token } = useAuth();
@@ -186,43 +143,33 @@ function TicketDetail() {
   return (
     <>
       <Nav />
-      <main style={{ maxWidth: 860, margin: '0 auto', padding: 32 }}>
-        <button
-          onClick={() => router.push('/tickets')}
-          style={{ border: 0, background: 'transparent', color: '#6b7280', fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 16 }}
-        >
+      <main className="page-narrow">
+        <button onClick={() => router.push('/tickets')} className="btn btn-ghost" style={{ marginBottom: 16, marginLeft: -8 }}>
           ← Назад к тикетам
         </button>
 
         {error && (
-          <div style={{ padding: 14, borderRadius: 10, background: '#fee2e2', color: '#991b1b', marginBottom: 20 }}>
+          <div style={{ padding: 14, borderRadius: 10, background: 'var(--color-danger-soft)', color: 'var(--color-danger)', marginBottom: 20 }}>
             {error}
           </div>
         )}
 
         {loading || !ticket ? (
-          <p style={{ color: '#6b7280' }}>Загрузка...</p>
+          <p style={{ color: 'var(--color-text-muted)' }}>Загрузка...</p>
         ) : (
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-              <h1 style={{ fontSize: 24, margin: 0 }}>{ticket.title}</h1>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <Badge
-                  text={PRIORITY_LABELS[ticket.priority]}
-                  color={
-                    ticket.priority === 'critical'
-                      ? '#991b1b'
-                      : ticket.priority === 'high'
-                        ? '#b45309'
-                        : ticket.priority === 'medium'
-                          ? '#1d4ed8'
-                          : '#6b7280'
-                  }
-                />
-                <Badge text={STATUS_LABELS[ticket.status]} color={STATUS_COLORS[ticket.status]} />
+              <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.01em', margin: 0 }}>{ticket.title}</h1>
+              <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                <span className="badge" style={priorityBadgeStyle(ticket.priority)}>
+                  {PRIORITY_LABELS[ticket.priority]}
+                </span>
+                <span className="badge" style={statusBadgeStyle(ticket.status)}>
+                  {STATUS_LABELS[ticket.status]}
+                </span>
               </div>
             </div>
-            <p style={{ color: '#6b7280', fontSize: 13, marginBottom: 20 }}>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 13, marginBottom: 20 }}>
               Создан {new Date(ticket.created_at).toLocaleString()}
               {customer && ` · ${customer.name}`}
               {property && ` · ${property.name}`}
@@ -231,46 +178,30 @@ function TicketDetail() {
             {AVAILABLE_ACTIONS[ticket.status].length > 0 && (
               <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
                 {AVAILABLE_ACTIONS[ticket.status].map((a) => (
-                  <button key={a.action} onClick={() => runAction(a.action)} disabled={busy} style={secondaryButton}>
+                  <button key={a.action} onClick={() => runAction(a.action)} disabled={busy} className="btn btn-secondary">
                     {a.label}
                   </button>
                 ))}
               </div>
             )}
 
-            <form
-              onSubmit={saveChanges}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 14,
-                padding: 20,
-                border: '1px solid #e5e7eb',
-                borderRadius: 14,
-                background: '#fff',
-              }}
-            >
-              <label style={fieldLabel}>
+            <form onSubmit={saveChanges} className="card card-pad" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <label className="field">
                 Заголовок
-                <input value={title} onChange={(e) => setTitle(e.target.value)} style={input} required />
+                <input value={title} onChange={(e) => setTitle(e.target.value)} className="input" required />
               </label>
-              <label style={fieldLabel}>
+              <label className="field">
                 Описание
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  style={{ ...input, minHeight: 90, resize: 'vertical', fontFamily: 'inherit' }}
-                  required
-                />
+                <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="textarea" required />
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <label style={fieldLabel}>
+                <label className="field">
                   Категория
-                  <input value={category} onChange={(e) => setCategory(e.target.value)} style={input} />
+                  <input value={category} onChange={(e) => setCategory(e.target.value)} className="input" />
                 </label>
-                <label style={fieldLabel}>
+                <label className="field">
                   Приоритет
-                  <select value={priority} onChange={(e) => setPriority(e.target.value as TicketPriority)} style={input}>
+                  <select value={priority} onChange={(e) => setPriority(e.target.value as TicketPriority)} className="select">
                     {Object.entries(PRIORITY_LABELS).map(([value, label]) => (
                       <option key={value} value={value}>
                         {label}
@@ -279,9 +210,9 @@ function TicketDetail() {
                   </select>
                 </label>
               </div>
-              <label style={fieldLabel}>
+              <label className="field">
                 Исполнитель
-                <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} style={input}>
+                <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} className="select">
                   <option value="">Не назначен</option>
                   {users.map((u) => (
                     <option key={u.id} value={u.id}>
@@ -291,62 +222,32 @@ function TicketDetail() {
                 </select>
               </label>
               {assignee && (
-                <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>Сейчас назначено: {assignee.email}</p>
+                <p style={{ fontSize: 12, color: 'var(--color-text-subtle)', margin: 0 }}>Сейчас назначено: {assignee.email}</p>
               )}
-              <button type="submit" disabled={busy} style={{ ...primaryButton, alignSelf: 'flex-start' }}>
+              <button type="submit" disabled={busy} className="btn btn-accent" style={{ alignSelf: 'flex-start' }}>
                 {busy ? 'Сохранение...' : 'Сохранить'}
               </button>
             </form>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 20 }}>
-              <div style={{ border: '1px solid #e5e7eb', borderRadius: 14, padding: 16, background: '#fff' }}>
-                <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Срок ответа</div>
-                <div style={{ fontSize: 14 }}>
+              <div className="stat-tile">
+                <div className="stat-tile-label">Срок ответа</div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>
                   {ticket.response_deadline ? new Date(ticket.response_deadline).toLocaleString() : '—'}
                 </div>
               </div>
-              <div style={{ border: '1px solid #e5e7eb', borderRadius: 14, padding: 16, background: '#fff' }}>
-                <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Срок решения</div>
-                <div style={{ fontSize: 14 }}>
+              <div className="stat-tile">
+                <div className="stat-tile-label">Срок решения</div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>
                   {ticket.resolution_deadline ? new Date(ticket.resolution_deadline).toLocaleString() : '—'}
                 </div>
               </div>
             </div>
 
             {ticket.conversation_id && (
-              <div style={{ marginTop: 20 }}>
-                <h2 style={{ fontSize: 15, marginBottom: 10 }}>Переписка</h2>
-                {messages.length === 0 ? (
-                  <p style={{ fontSize: 13, color: '#9ca3af' }}>Сообщений пока нет.</p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {messages.map((m) => (
-                      <div
-                        key={m.id}
-                        style={{
-                          alignSelf: m.direction === 'outbound' ? 'flex-end' : 'flex-start',
-                          maxWidth: '70%',
-                          padding: '10px 14px',
-                          borderRadius: 14,
-                          background: m.direction === 'outbound' ? '#111827' : '#fff',
-                          color: m.direction === 'outbound' ? '#fff' : '#111827',
-                          border: m.direction === 'outbound' ? 'none' : '1px solid #e5e7eb',
-                        }}
-                      >
-                        <div style={{ fontSize: 14, whiteSpace: 'pre-wrap' }}>{m.content}</div>
-                        <div
-                          style={{
-                            fontSize: 11,
-                            marginTop: 4,
-                            color: m.direction === 'outbound' ? '#9ca3af' : '#9ca3af',
-                          }}
-                        >
-                          {new Date(m.created_at).toLocaleString()}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              <div style={{ marginTop: 24 }}>
+                <h2 style={{ fontSize: 15, marginBottom: 12 }}>Переписка</h2>
+                <MessageTimeline messages={messages} />
               </div>
             )}
           </>
@@ -355,26 +256,6 @@ function TicketDetail() {
     </>
   );
 }
-
-const fieldLabel: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, color: '#374151' };
-const input: React.CSSProperties = { padding: '9px 12px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 14 };
-const primaryButton: React.CSSProperties = {
-  padding: '10px 18px',
-  borderRadius: 8,
-  border: 0,
-  background: '#111827',
-  color: '#fff',
-  fontSize: 14,
-  cursor: 'pointer',
-};
-const secondaryButton: React.CSSProperties = {
-  padding: '8px 14px',
-  borderRadius: 8,
-  border: '1px solid #d1d5db',
-  background: '#fff',
-  fontSize: 13,
-  cursor: 'pointer',
-};
 
 export default function TicketDetailPage() {
   return (

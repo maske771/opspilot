@@ -88,55 +88,32 @@ function PropertiesList() {
   return (
     <>
       <Nav />
-      <main style={{ maxWidth: 900, margin: '0 auto', padding: 32 }}>
-        <h1 style={{ fontSize: 26, marginBottom: 20 }}>Properties</h1>
+      <main className="page">
+        <h1 className="page-title">Properties</h1>
+        <p className="page-subtitle">Объекты и юниты, привязанные к тикетам.</p>
 
-        <form
-          onSubmit={createProperty}
-          style={{
-            display: 'flex',
-            gap: 10,
-            marginBottom: 24,
-            padding: 16,
-            border: '1px solid #e5e7eb',
-            borderRadius: 12,
-            background: '#fff',
-          }}
-        >
-          <input
-            required
-            placeholder="Название объекта"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            style={{ ...input, flex: 1 }}
-          />
-          <input
-            placeholder="Адрес (необязательно)"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            style={{ ...input, flex: 2 }}
-          />
-          <button type="submit" disabled={creating} style={button}>
+        <form onSubmit={createProperty} className="card card-pad" style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
+          <input required placeholder="Название объекта" value={name} onChange={(e) => setName(e.target.value)} className="input" style={{ flex: 1 }} />
+          <input placeholder="Адрес (необязательно)" value={address} onChange={(e) => setAddress(e.target.value)} className="input" style={{ flex: 2 }} />
+          <button type="submit" disabled={creating} className="btn btn-accent">
             {creating ? 'Добавление...' : 'Добавить'}
           </button>
         </form>
 
         {error && (
-          <div style={{ padding: 14, borderRadius: 10, background: '#fee2e2', color: '#991b1b', marginBottom: 20 }}>
+          <div style={{ padding: 14, borderRadius: 10, background: 'var(--color-danger-soft)', color: 'var(--color-danger)', marginBottom: 20 }}>
             {error}
           </div>
         )}
 
         {loading ? (
-          <p style={{ color: '#6b7280' }}>Загрузка...</p>
+          <p style={{ color: 'var(--color-text-muted)' }}>Загрузка...</p>
         ) : properties.length === 0 ? (
-          <div style={{ border: '1px dashed #d1d5db', borderRadius: 16, padding: 40, textAlign: 'center', color: '#6b7280' }}>
-            Объектов пока нет.
-          </div>
+          <div className="empty-state">Объектов пока нет.</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {properties.map((property) => (
-              <div key={property.id} style={{ border: '1px solid #e5e7eb', borderRadius: 12, background: '#fff' }}>
+              <div key={property.id} className="card">
                 <button
                   onClick={() => toggleExpand(property.id)}
                   style={{
@@ -152,30 +129,21 @@ function PropertiesList() {
                   }}
                 >
                   <div>
-                    <div style={{ fontWeight: 600 }}>{property.name}</div>
+                    <div style={{ fontWeight: 600, fontSize: 14.5 }}>{property.name}</div>
                     {property.address && (
-                      <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>{property.address}</div>
+                      <div style={{ fontSize: 12.5, color: 'var(--color-text-subtle)', marginTop: 4 }}>{property.address}</div>
                     )}
                   </div>
-                  <span style={{ fontSize: 13, color: '#6b7280' }}>{expanded === property.id ? 'Скрыть юниты' : 'Юниты'}</span>
+                  <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{expanded === property.id ? 'Скрыть юниты' : 'Юниты'}</span>
                 </button>
                 {expanded === property.id && (
-                  <div style={{ borderTop: '1px solid #f0f0f0', padding: 16 }}>
+                  <div style={{ borderTop: '1px solid var(--color-border-subtle)', padding: 16 }}>
                     {(units[property.id] ?? []).length === 0 ? (
-                      <p style={{ fontSize: 13, color: '#9ca3af', margin: '0 0 12px' }}>Юнитов пока нет.</p>
+                      <p style={{ fontSize: 13, color: 'var(--color-text-subtle)', margin: '0 0 12px' }}>Юнитов пока нет.</p>
                     ) : (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                         {(units[property.id] ?? []).map((unit) => (
-                          <span
-                            key={unit.id}
-                            style={{
-                              padding: '4px 10px',
-                              borderRadius: 999,
-                              background: '#f3f4f6',
-                              fontSize: 12,
-                              color: '#374151',
-                            }}
-                          >
+                          <span key={unit.id} className="badge" style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)' }}>
                             {unit.unit_number}
                           </span>
                         ))}
@@ -186,9 +154,10 @@ function PropertiesList() {
                         placeholder="Номер юнита"
                         value={newUnitNumber}
                         onChange={(e) => setNewUnitNumber(e.target.value)}
-                        style={{ ...input, flex: 1 }}
+                        className="input"
+                        style={{ flex: 1 }}
                       />
-                      <button type="submit" disabled={addingUnit} style={button}>
+                      <button type="submit" disabled={addingUnit} className="btn btn-secondary">
                         {addingUnit ? '...' : 'Добавить юнит'}
                       </button>
                     </form>
@@ -202,23 +171,6 @@ function PropertiesList() {
     </>
   );
 }
-
-const input: React.CSSProperties = {
-  padding: '9px 12px',
-  borderRadius: 8,
-  border: '1px solid #d1d5db',
-  fontSize: 14,
-};
-const button: React.CSSProperties = {
-  padding: '9px 16px',
-  borderRadius: 8,
-  border: 0,
-  background: '#111827',
-  color: '#fff',
-  fontSize: 14,
-  cursor: 'pointer',
-  whiteSpace: 'nowrap',
-};
 
 export default function PropertiesPage() {
   return (
