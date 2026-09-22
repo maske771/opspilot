@@ -26,6 +26,12 @@ class ConversationRead(BaseModel):
     updated_at: datetime
 
 
+class AttachmentRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    content_type: str
+
+
 class MessageRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
@@ -34,6 +40,7 @@ class MessageRead(BaseModel):
     content: str
     external_message_id: str | None
     created_at: datetime
+    attachments: list[AttachmentRead] = []
 
 
 @router.get("", response_model=list[ConversationRead])

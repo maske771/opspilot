@@ -8,7 +8,8 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from sqlalchemy import text
 
 from .db import SessionLocal
-from .models import Channel
+from .media import download_telegram_photo, save_bytes
+from .models import Channel, MessageAttachment
 from .outbound import send_message
 from .webhook_service import ingest_normalized_event, normalize_event
 
@@ -69,10 +70,24 @@ async def receive_webhook(provider: str, account_id: str, request: Request, x_we
         data, message_created, ticket_created = ingest_normalized_event(db, channel["organization_id"], channel, normalized)
         db.commit()
 
-        if data["reply_text"]:
-            channel_row = db.get(Channel, channel["id"])
-            if channel_row is not None:
-                send_message(channel_row, normalized.external_user_id, data["reply_text"])
+        channel_row = db.get(Channel, channel["id"])
+
+        if message_created and normalized.media_file_id and normalized.media_type == "photo" and channel_row is not None and channel_row.credentials:
+            bot_token = channel_row.credentials.get("bot_token")
+            if bot_token:
+                content = download_telegram_photo(bot_token, normalized.media_file_id)
+                if content is not None:
+                    storage_path = save_bytes(channel["organization_id"], content, ".jpg")
+                    db.add(MessageAttachment(
+                        organization_id=channel["organization_id"],
+                        message_id=data["message_id"],
+                        storage_path=storage_path,
+                        content_type="image/jpeg",
+                    ))
+                    db.commit()
+
+        if data["reply_text"] and channel_row is not None:
+            send_message(channel_row, normalized.external_user_id, data["reply_text"])
 
         return {"status": "accepted", "event_id": event_id, "normalized": True, "message_created": message_created, "ticket_created": ticket_created, **data}
     except HTTPException:

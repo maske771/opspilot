@@ -102,6 +102,11 @@ export type CustomerRead = {
   email: string | null;
 };
 
+export type AttachmentRead = {
+  id: string;
+  content_type: string;
+};
+
 export type MessageRead = {
   id: string;
   conversation_id: string;
@@ -109,6 +114,7 @@ export type MessageRead = {
   content: string;
   external_message_id: string | null;
   created_at: string;
+  attachments: AttachmentRead[];
 };
 
 export type InboxItem = {

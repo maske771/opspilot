@@ -19,6 +19,8 @@ class NormalizedEvent:
     customer_name: str | None = None
     phone: str | None = None
     email: str | None = None
+    media_file_id: str | None = None
+    media_type: str | None = None
 
 def _first(mapping: dict[str, Any], *keys: str) -> Any:
     for key in keys:
@@ -42,10 +44,17 @@ def normalize_event(provider: str, payload: dict[str, Any]) -> NormalizedEvent |
         message = payload.get("message") or payload.get("edited_message") or {}
         chat, sender = message.get("chat") or {}, message.get("from") or {}
         user_id, conversation_id = _first(sender, "id"), _first(chat, "id")
-        message_id, text = _first(message, "message_id", "id"), _first(message, "text", "caption")
+        message_id, text = _first(message, "message_id", "id"), _first(message, "text", "caption") or ""
         name = " ".join(filter(None, [_first(sender, "first_name"), _first(sender, "last_name")])) or None
-        if user_id and conversation_id and text and not text.strip().startswith("/"):
-            return NormalizedEvent(str(conversation_id), str(user_id), str(message_id) if message_id else None, str(text), customer_name=name)
+        photo_sizes = message.get("photo")
+        media_file_id = photo_sizes[-1]["file_id"] if photo_sizes else None
+        if text.strip().startswith("/"):
+            return None
+        if user_id and conversation_id and (text or media_file_id):
+            return NormalizedEvent(
+                str(conversation_id), str(user_id), str(message_id) if message_id else None, str(text),
+                customer_name=name, media_file_id=media_file_id, media_type="photo" if media_file_id else None,
+            )
         return None
     if provider == "whatsapp":
         try:
@@ -130,11 +139,15 @@ def ingest_normalized_event(db: Session, organization_id, channel, event: Normal
     if message is None:
         message = Message(conversation_id=conversation.id, direction="inbound", content=event.text, external_message_id=event.external_message_id)
         db.add(message); db.flush()
+    has_media = event.media_file_id is not None
+    display_text = event.text.strip() or ("Photo from customer" if has_media else "")
+
     ticket = db.scalar(select(Ticket).where(Ticket.organization_id == organization_id, Ticket.conversation_id == conversation.id, Ticket.status != TicketStatus.CLOSED).order_by(Ticket.created_at.desc()))
     ticket_created = False
-    if ticket is None and is_actionable_request(event.text):
-        intake = classify(event.text)
-        ticket = Ticket(organization_id=organization_id, customer_id=customer.id, conversation_id=conversation.id, title=event.text[:255], description=event.text, category=intake.category, priority=intake.priority, status=TicketStatus.NEW)
+    if ticket is None and (has_media or is_actionable_request(event.text)):
+        intake = classify(event.text or "photo")
+        description = event.text.strip() or "Customer sent a photo."
+        ticket = Ticket(organization_id=organization_id, customer_id=customer.id, conversation_id=conversation.id, title=display_text[:255], description=description, category=intake.category, priority=intake.priority, status=TicketStatus.NEW)
         db.add(ticket); db.flush()
         ticket.response_deadline, ticket.resolution_deadline = calculate_sla(ticket.priority, ticket.created_at)
         ticket_created = True

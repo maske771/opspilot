@@ -6,6 +6,8 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - ACCESS_TOKEN_MINUTES=${ACCESS_TOKEN_MINUTES:-60}
       - CORS_ORIGINS=https://${BASE_DOMAIN}
+    volumes:
+      - media_data:/media
     depends_on:
       - db
     restart: unless-stopped
@@ -127,3 +129,4 @@ volumes:
   grafana_data:
   caddy_data:
   caddy_config:
+  media_data:

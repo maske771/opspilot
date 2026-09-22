@@ -3,6 +3,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .attachment_routes import router as attachment_router
 from .auth_routes import router as auth_router
 from .organization_routes import router as organization_router
 from .tickets import router as tickets_router
@@ -29,6 +30,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(attachment_router)
 app.include_router(organization_router)
 app.include_router(users_router)
 app.include_router(tickets_router)

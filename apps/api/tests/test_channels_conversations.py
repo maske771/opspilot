@@ -51,3 +51,41 @@ def test_normalize_line_message():
 
 def test_unknown_payload_is_stored_but_not_normalized():
     assert normalize_event("telegram", {"update_id": 1}) is None
+
+
+def test_normalize_telegram_photo_with_caption():
+    event = normalize_event("telegram", {
+        "message": {
+            "message_id": 5,
+            "caption": "Leaking pipe",
+            "chat": {"id": 100},
+            "from": {"id": 200, "first_name": "Ivan"},
+            "photo": [{"file_id": "small", "width": 90}, {"file_id": "large", "width": 800}],
+        }
+    })
+    assert event is not None
+    assert event.text == "Leaking pipe"
+    assert event.media_file_id == "large"
+    assert event.media_type == "photo"
+
+
+def test_normalize_telegram_photo_without_caption():
+    event = normalize_event("telegram", {
+        "message": {
+            "message_id": 6,
+            "chat": {"id": 100},
+            "from": {"id": 200},
+            "photo": [{"file_id": "only", "width": 400}],
+        }
+    })
+    assert event is not None
+    assert event.text == ""
+    assert event.media_file_id == "only"
+    assert event.media_type == "photo"
+
+
+def test_normalize_telegram_text_message_has_no_media():
+    event = normalize_event("telegram", {"message": {"message_id": 1, "text": "hi", "chat": {"id": 1}, "from": {"id": 2}}})
+    assert event is not None
+    assert event.media_file_id is None
+    assert event.media_type is None

@@ -7,6 +7,8 @@ services:
       - DATABASE_URL=postgresql+psycopg://opspilot:opspilot_dev@db:5432/opspilot
       - JWT_SECRET=${JWT_SECRET:-opspilot-dev-secret-change-me}
       - ACCESS_TOKEN_MINUTES=${ACCESS_TOKEN_MINUTES:-60}
+    volumes:
+      - media_data:/media
     depends_on:
       - db
 
@@ -114,3 +116,4 @@ volumes:
   prometheus_data:
   grafana_data:
   alertmanager_data:
+  media_data:
