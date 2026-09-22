@@ -96,5 +96,7 @@ def send_conversation_message(
     db.commit()
     db.refresh(message)
 
-    delivered = send_message(channel, identity.external_user_id, payload.content)
+    staff_name = user.email.split("@")[0].capitalize()
+    signed_content = f"{staff_name}: {payload.content}"
+    delivered = send_message(channel, identity.external_user_id, signed_content)
     return MessageSendResult(message=message, delivered=delivered)
