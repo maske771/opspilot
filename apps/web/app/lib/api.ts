@@ -102,6 +102,15 @@ export type CustomerRead = {
   email: string | null;
 };
 
+export type MessageRead = {
+  id: string;
+  conversation_id: string;
+  direction: 'inbound' | 'outbound';
+  content: string;
+  external_message_id: string | null;
+  created_at: string;
+};
+
 export type DashboardSummary = {
   tickets_total: number;
   tickets_open: number;

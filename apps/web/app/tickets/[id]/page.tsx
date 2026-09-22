@@ -8,6 +8,7 @@ import {
   apiFetch,
   ApiError,
   type CustomerRead,
+  type MessageRead,
   type PropertyRead,
   type TicketPriority,
   type TicketRead,
@@ -96,6 +97,7 @@ function TicketDetail() {
   const [users, setUsers] = useState<UserRead[]>([]);
   const [properties, setProperties] = useState<PropertyRead[]>([]);
   const [customers, setCustomers] = useState<CustomerRead[]>([]);
+  const [messages, setMessages] = useState<MessageRead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -126,6 +128,9 @@ function TicketDetail() {
         setCategory(t.category);
         setPriority(t.priority);
         setAssigneeId(t.assignee_id ?? '');
+        if (t.conversation_id) {
+          apiFetch<MessageRead[]>(`/conversations/${t.conversation_id}/messages`, { token }).then(setMessages);
+        }
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Не удалось загрузить тикет'))
       .finally(() => setLoading(false));
@@ -307,6 +312,43 @@ function TicketDetail() {
                 </div>
               </div>
             </div>
+
+            {ticket.conversation_id && (
+              <div style={{ marginTop: 20 }}>
+                <h2 style={{ fontSize: 15, marginBottom: 10 }}>Переписка</h2>
+                {messages.length === 0 ? (
+                  <p style={{ fontSize: 13, color: '#9ca3af' }}>Сообщений пока нет.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {messages.map((m) => (
+                      <div
+                        key={m.id}
+                        style={{
+                          alignSelf: m.direction === 'outbound' ? 'flex-end' : 'flex-start',
+                          maxWidth: '70%',
+                          padding: '10px 14px',
+                          borderRadius: 14,
+                          background: m.direction === 'outbound' ? '#111827' : '#fff',
+                          color: m.direction === 'outbound' ? '#fff' : '#111827',
+                          border: m.direction === 'outbound' ? 'none' : '1px solid #e5e7eb',
+                        }}
+                      >
+                        <div style={{ fontSize: 14, whiteSpace: 'pre-wrap' }}>{m.content}</div>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            marginTop: 4,
+                            color: m.direction === 'outbound' ? '#9ca3af' : '#9ca3af',
+                          }}
+                        >
+                          {new Date(m.created_at).toLocaleString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
       </main>

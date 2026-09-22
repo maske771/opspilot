@@ -147,6 +147,8 @@ def ingest_normalized_event(db: Session, organization_id, channel, event: Normal
         else:
             result = generator.generate_follow_up(customer_message=event.text, ticket_status=ticket.status.value, language=language)
         reply_text = result.text
+        db.add(Message(conversation_id=conversation.id, direction="outbound", content=reply_text))
+        db.flush()
 
     data = {"customer_id": customer.id, "conversation_id": conversation.id, "message_id": message.id, "ticket_id": ticket.id, "reply_text": reply_text}
     return data, message_created, ticket_created
