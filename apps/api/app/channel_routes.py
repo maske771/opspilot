@@ -22,17 +22,20 @@ class ChannelRead(BaseModel):
     account_id: str
     name: str
     status: str
+    has_credentials: bool
     created_at: datetime
 
 
 class ChannelConnect(BaseModel):
     account_id: str = Field(min_length=1, max_length=255)
     name: str = Field(min_length=1, max_length=255)
+    credentials: dict[str, str] | None = None
 
 
 class ChannelUpdate(BaseModel):
     account_id: str | None = Field(default=None, min_length=1, max_length=255)
     name: str | None = Field(default=None, min_length=1, max_length=255)
+    credentials: dict[str, str] | None = None
 
 
 def normalize_channel_value(value: str, label: str) -> str:
@@ -61,7 +64,7 @@ def connect_channel(channel_type: str, payload: ChannelConnect, user: User = Dep
         name = normalize_channel_name(payload.name)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
-    channel = Channel(organization_id=user.organization_id, type=channel_type, account_id=account_id, name=name, status="connected")
+    channel = Channel(organization_id=user.organization_id, type=channel_type, account_id=account_id, name=name, status="connected", credentials=payload.credentials)
     db.add(channel)
     db.commit()
     db.refresh(channel)
@@ -95,7 +98,8 @@ def update_channel(channel_id: uuid.UUID, payload: ChannelUpdate, user: User = D
     changes = payload.model_dump(exclude_unset=True)
     try:
         for field, value in changes.items():
-            value = normalize_channel_value(value, field)
+            if field != "credentials":
+                value = normalize_channel_value(value, field)
             setattr(channel, field, value)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
