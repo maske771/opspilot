@@ -13,6 +13,7 @@ from .user_routes import router as users_router
 from .dashboard_routes import router as dashboard_router
 from .channel_routes import router as channel_router
 from .conversation_routes import router as conversation_router
+from .inbox_routes import router as inbox_router
 from .webhook_routes import router as webhook_router
 from .ai_routes import router as ai_router
 from .observability import instrumentator, router as observability_router
@@ -37,6 +38,7 @@ app.include_router(units_router)
 app.include_router(dashboard_router)
 app.include_router(channel_router)
 app.include_router(conversation_router)
+app.include_router(inbox_router)
 app.include_router(webhook_router)
 app.include_router(ai_router)
 app.include_router(observability_router)

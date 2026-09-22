@@ -4,8 +4,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .ai_intake import classify
-from .ai_response import detect_language, get_response_generator
+from .ai_intake import classify, is_actionable_request
+from .ai_response import detect_language, generate_greeting, get_response_generator
 from .customer_match import find_customer, normalize_email, normalize_phone
 from .models import Conversation, Customer, CustomerIdentity, Message, Ticket, TicketStatus
 from .sla import calculate_sla
@@ -131,18 +131,21 @@ def ingest_normalized_event(db: Session, organization_id, channel, event: Normal
         message = Message(conversation_id=conversation.id, direction="inbound", content=event.text, external_message_id=event.external_message_id)
         db.add(message); db.flush()
     ticket = db.scalar(select(Ticket).where(Ticket.organization_id == organization_id, Ticket.conversation_id == conversation.id, Ticket.status != TicketStatus.CLOSED).order_by(Ticket.created_at.desc()))
-    ticket_created = ticket is None
-    if ticket is None:
+    ticket_created = False
+    if ticket is None and is_actionable_request(event.text):
         intake = classify(event.text)
         ticket = Ticket(organization_id=organization_id, customer_id=customer.id, conversation_id=conversation.id, title=event.text[:255], description=event.text, category=intake.category, priority=intake.priority, status=TicketStatus.NEW)
         db.add(ticket); db.flush()
         ticket.response_deadline, ticket.resolution_deadline = calculate_sla(ticket.priority, ticket.created_at)
+        ticket_created = True
 
     reply_text = None
     if message_created:
         language = detect_language(event.text)
         generator = get_response_generator()
-        if ticket_created:
+        if ticket is None:
+            result = generate_greeting(customer_message=event.text, language=language)
+        elif ticket_created:
             result = generator.generate(customer_message=event.text, category=ticket.category, priority=ticket.priority.value, language=language)
         else:
             result = generator.generate_follow_up(customer_message=event.text, ticket_status=ticket.status.value, language=language)
@@ -150,5 +153,5 @@ def ingest_normalized_event(db: Session, organization_id, channel, event: Normal
         db.add(Message(conversation_id=conversation.id, direction="outbound", content=reply_text))
         db.flush()
 
-    data = {"customer_id": customer.id, "conversation_id": conversation.id, "message_id": message.id, "ticket_id": ticket.id, "reply_text": reply_text}
+    data = {"customer_id": customer.id, "conversation_id": conversation.id, "message_id": message.id, "ticket_id": ticket.id if ticket else None, "reply_text": reply_text}
     return data, message_created, ticket_created

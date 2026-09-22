@@ -1,4 +1,4 @@
-from app.ai_response import RuleBasedResponseGenerator, detect_language, is_status_query
+from app.ai_response import RuleBasedResponseGenerator, detect_language, generate_greeting, is_status_query
 
 
 def test_detect_language_russian():
@@ -56,3 +56,18 @@ def test_generate_falls_back_to_english_for_unsupported_language():
     generator = RuleBasedResponseGenerator()
     result = generator.generate(customer_message="x", category="other", priority="low", language="th")
     assert result.text == RuleBasedResponseGenerator().generate(customer_message="x", category="other", priority="low", language="en").text
+
+
+def test_generate_greeting_thanks():
+    result = generate_greeting(customer_message="thanks!", language="en")
+    assert "welcome" in result.text.lower()
+
+
+def test_generate_greeting_hello():
+    result = generate_greeting(customer_message="hi there", language="en")
+    assert "help" in result.text.lower()
+
+
+def test_generate_greeting_russian_thanks():
+    result = generate_greeting(customer_message="спасибо большое", language="ru")
+    assert "пожалуйста" in result.text.lower()

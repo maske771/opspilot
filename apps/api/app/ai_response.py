@@ -73,6 +73,25 @@ _FOLLOW_UP_ACK: dict[Language, str] = {
     "ru": "Спасибо, добавили это к вашему текущему запросу.",
 }
 
+_THANKS_WORDS = ("thanks", "thank you", "thx", "ty", "спасибо", "благодар")
+
+_GREETING_REPLIES: dict[Language, dict[str, str]] = {
+    "en": {
+        "thanks": "You're welcome! Reach out anytime you need something.",
+        "hello": "Hello! How can we help you today?",
+    },
+    "ru": {
+        "thanks": "Пожалуйста! Обращайтесь, если понадобится что-то ещё.",
+        "hello": "Здравствуйте! Чем можем помочь?",
+    },
+}
+
+
+def generate_greeting(*, customer_message: str, language: Language = "en") -> GeneratedResponse:
+    language = language if language in _GREETING_REPLIES else "en"
+    kind = "thanks" if any(word in customer_message.lower() for word in _THANKS_WORDS) else "hello"
+    return GeneratedResponse(text=_GREETING_REPLIES[language][kind], provider="rule-based", confidence=0.6)
+
 
 class RuleBasedResponseGenerator:
     """Safe deterministic baseline used until an external LLM provider is configured."""

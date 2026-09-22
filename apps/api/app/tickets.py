@@ -87,12 +87,28 @@ def _transition(ticket: Ticket, target: TicketStatus) -> None:
 
 
 @router.get("", response_model=list[TicketRead])
-def list_tickets(ticket_status: TicketStatus | None = Query(default=None, alias="status"), priority: TicketPriority | None = None, limit: int = Query(default=50, ge=1, le=100), offset: int = Query(default=0, ge=0), user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[Ticket]:
+def list_tickets(
+    ticket_status: TicketStatus | None = Query(default=None, alias="status"),
+    priority: TicketPriority | None = None,
+    conversation_id: uuid.UUID | None = None,
+    assignee_id: uuid.UUID | None = None,
+    unassigned: bool | None = None,
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[Ticket]:
     stmt = select(Ticket).where(Ticket.organization_id == user.organization_id)
     if ticket_status is not None:
         stmt = stmt.where(Ticket.status == ticket_status)
     if priority is not None:
         stmt = stmt.where(Ticket.priority == priority)
+    if conversation_id is not None:
+        stmt = stmt.where(Ticket.conversation_id == conversation_id)
+    if unassigned:
+        stmt = stmt.where(Ticket.assignee_id.is_(None))
+    elif assignee_id is not None:
+        stmt = stmt.where(Ticket.assignee_id == assignee_id)
     stmt = stmt.order_by(Ticket.created_at.desc()).offset(offset).limit(limit)
     return list(db.scalars(stmt).all())
 
