@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .ai_intake import classify
+from .ai_response import detect_language, get_response_generator
 from .customer_match import find_customer, normalize_email, normalize_phone
 from .models import Conversation, Customer, CustomerIdentity, Message, Ticket, TicketStatus
 from .sla import calculate_sla
@@ -136,4 +137,16 @@ def ingest_normalized_event(db: Session, organization_id, channel, event: Normal
         ticket = Ticket(organization_id=organization_id, customer_id=customer.id, conversation_id=conversation.id, title=event.text[:255], description=event.text, category=intake.category, priority=intake.priority, status=TicketStatus.NEW)
         db.add(ticket); db.flush()
         ticket.response_deadline, ticket.resolution_deadline = calculate_sla(ticket.priority, ticket.created_at)
-    return {"customer_id": customer.id, "conversation_id": conversation.id, "message_id": message.id, "ticket_id": ticket.id}, message_created, ticket_created
+
+    reply_text = None
+    if message_created:
+        language = detect_language(event.text)
+        generator = get_response_generator()
+        if ticket_created:
+            result = generator.generate(customer_message=event.text, category=ticket.category, priority=ticket.priority.value, language=language)
+        else:
+            result = generator.generate_follow_up(customer_message=event.text, ticket_status=ticket.status.value, language=language)
+        reply_text = result.text
+
+    data = {"customer_id": customer.id, "conversation_id": conversation.id, "message_id": message.id, "ticket_id": ticket.id, "reply_text": reply_text}
+    return data, message_created, ticket_created

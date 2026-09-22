@@ -8,7 +8,7 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from sqlalchemy import text
 
 from .db import SessionLocal
-from .models import Channel, Ticket
+from .models import Channel
 from .outbound import send_message
 from .webhook_service import ingest_normalized_event, normalize_event
 
@@ -69,15 +69,10 @@ async def receive_webhook(provider: str, account_id: str, request: Request, x_we
         data, message_created, ticket_created = ingest_normalized_event(db, channel["organization_id"], channel, normalized)
         db.commit()
 
-        if ticket_created:
+        if data["reply_text"]:
             channel_row = db.get(Channel, channel["id"])
-            ticket = db.get(Ticket, data["ticket_id"])
-            if channel_row is not None and ticket is not None:
-                ack_text = (
-                    f"Thanks! We've logged your request as ticket #{str(ticket.id)[:8]} "
-                    f"({ticket.priority.value} priority). Our team will follow up shortly."
-                )
-                send_message(channel_row, normalized.external_user_id, ack_text)
+            if channel_row is not None:
+                send_message(channel_row, normalized.external_user_id, data["reply_text"])
 
         return {"status": "accepted", "event_id": event_id, "normalized": True, "message_created": message_created, "ticket_created": ticket_created, **data}
     except HTTPException:

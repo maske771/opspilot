@@ -44,6 +44,7 @@ class GenerateResponseRequest(BaseModel):
     customer_message: str = Field(min_length=1, max_length=10000)
     category: str = Field(min_length=1, max_length=100)
     priority: str = Field(min_length=1, max_length=30)
+    language: str = Field(default="en", min_length=2, max_length=5)
 
 
 class GenerateResponseResponse(BaseModel):
@@ -108,6 +109,7 @@ def generate_response(
         customer_message=payload.customer_message,
         category=payload.category,
         priority=payload.priority,
+        language=payload.language if payload.language in ("en", "ru") else "en",
     )
     return GenerateResponseResponse(
         text=result.text,
