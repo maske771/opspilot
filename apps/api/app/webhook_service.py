@@ -43,7 +43,7 @@ def normalize_event(provider: str, payload: dict[str, Any]) -> NormalizedEvent |
         user_id, conversation_id = _first(sender, "id"), _first(chat, "id")
         message_id, text = _first(message, "message_id", "id"), _first(message, "text", "caption")
         name = " ".join(filter(None, [_first(sender, "first_name"), _first(sender, "last_name")])) or None
-        if user_id and conversation_id and text:
+        if user_id and conversation_id and text and not text.strip().startswith("/"):
             return NormalizedEvent(str(conversation_id), str(user_id), str(message_id) if message_id else None, str(text), customer_name=name)
         return None
     if provider == "whatsapp":
