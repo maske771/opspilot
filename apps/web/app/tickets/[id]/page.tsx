@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Nav } from '../../components/Nav';
 import { MessageTimeline } from '../../components/MessageTimeline';
+import { ReplyBox } from '../../components/ReplyBox';
 import { RequireAuth, useAuth } from '../../lib/auth';
 import {
   apiFetch,
@@ -248,6 +249,10 @@ function TicketDetail() {
               <div style={{ marginTop: 24 }}>
                 <h2 style={{ fontSize: 15, marginBottom: 12 }}>Переписка</h2>
                 <MessageTimeline messages={messages} />
+                <ReplyBox
+                  conversationId={ticket.conversation_id}
+                  onSent={(message) => setMessages((prev) => [...prev, message])}
+                />
               </div>
             )}
           </>

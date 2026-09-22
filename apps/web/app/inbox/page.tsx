@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Nav } from '../components/Nav';
 import { MessageTimeline } from '../components/MessageTimeline';
+import { ReplyBox } from '../components/ReplyBox';
 import { RequireAuth, useAuth } from '../lib/auth';
 import { apiFetch, type InboxItem, type MessageRead } from '../lib/api';
 import { PRIORITY_LABELS, STATUS_LABELS, priorityBadgeStyle, statusBadgeStyle } from '../lib/ui';
@@ -156,6 +157,11 @@ export function InboxView() {
                       <MessageTimeline messages={messages} />
                     )}
                   </div>
+
+                  <ReplyBox
+                    conversationId={selected.conversation_id}
+                    onSent={(message) => setMessages((prev) => [...prev, message])}
+                  />
                 </>
               )}
             </div>
