@@ -18,10 +18,13 @@ PATCH /organization
 GET   /users
 POST  /users
 PATCH /users/{id}/role
+PATCH /users/{id}/specialties
 DELETE /users/{id}
 ```
 
 All user and organization operations are tenant-scoped. Owner/admin permissions are enforced server-side.
+
+`specialties` is a list of ticket category strings (e.g. `plumbing`, `hvac`, `electrical`) a staff/technician user can be assigned. Used by the ticket auto-assignment engine below.
 
 ## Properties / units
 
@@ -111,6 +114,8 @@ POST /tickets/{id}/close
 ```
 
 Tickets may optionally reference the originating conversation via `conversation_id`.
+
+On creation (both `POST /tickets` and webhook-generated tickets), the auto-assignment engine looks for a `staff`/`technician` user in the organization whose `specialties` include the ticket's `category`, and picks the one with the fewest currently open (non-closed) tickets. If a match is found, the ticket is assigned and moves straight to `assigned`; otherwise it is left unassigned in `new` for manual triage.
 
 ## Dashboard / analytics
 

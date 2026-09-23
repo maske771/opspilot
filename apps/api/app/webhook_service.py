@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from .ai_intake import classify, is_actionable_request
 from .ai_response import detect_language, generate_greeting, get_response_generator
+from .assignment import find_assignee_for_category
 from .customer_match import find_customer, normalize_email, normalize_phone
 from .models import Conversation, Customer, CustomerIdentity, Message, Ticket, TicketStatus
 from .sla import calculate_sla
@@ -150,6 +151,10 @@ def ingest_normalized_event(db: Session, organization_id, channel, event: Normal
         ticket = Ticket(organization_id=organization_id, customer_id=customer.id, conversation_id=conversation.id, title=display_text[:255], description=description, category=intake.category, priority=intake.priority, status=TicketStatus.NEW)
         db.add(ticket); db.flush()
         ticket.response_deadline, ticket.resolution_deadline = calculate_sla(ticket.priority, ticket.created_at)
+        assignee = find_assignee_for_category(db, organization_id, ticket.category)
+        if assignee is not None:
+            ticket.assignee_id = assignee.id
+            ticket.status = TicketStatus.ASSIGNED
         ticket_created = True
 
     reply_text = None

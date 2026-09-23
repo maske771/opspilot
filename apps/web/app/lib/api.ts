@@ -48,6 +48,7 @@ export type UserRead = {
   organization_id: string;
   email: string;
   role: UserRole;
+  specialties: string[];
 };
 
 export type TicketStatus =

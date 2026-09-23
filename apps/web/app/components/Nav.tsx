@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../lib/auth';
-import { isManagerRole } from '../lib/roles';
+import { isAdminRole, isManagerRole } from '../lib/roles';
 
 const MANAGER_LINKS = [
   { href: '/', label: 'Inbox' },
@@ -12,6 +12,8 @@ const MANAGER_LINKS = [
   { href: '/properties', label: 'Properties' },
   { href: '/customers', label: 'Customers' },
 ];
+
+const TEAM_LINK = { href: '/team', label: 'Team' };
 
 const FIELD_LINKS = [
   { href: '/', label: 'My Tickets' },
@@ -22,7 +24,8 @@ const FIELD_LINKS = [
 export function Nav() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
-  const links = isManagerRole(user?.role) ? MANAGER_LINKS : FIELD_LINKS;
+  const baseLinks = isManagerRole(user?.role) ? MANAGER_LINKS : FIELD_LINKS;
+  const links = isAdminRole(user?.role) ? [...baseLinks, TEAM_LINK] : baseLinks;
 
   return (
     <header className="nav">

@@ -19,6 +19,7 @@ class UserRead(BaseModel):
     organization_id: uuid.UUID
     email: str
     role: UserRole
+    specialties: list[str]
 
 
 class UserCreate(BaseModel):
@@ -29,6 +30,10 @@ class UserCreate(BaseModel):
 
 class UserRoleUpdate(BaseModel):
     role: UserRole
+
+
+class UserSpecialtiesUpdate(BaseModel):
+    specialties: list[str] = Field(max_length=50)
 
 
 @router.get("", response_model=list[UserRead])
@@ -90,6 +95,23 @@ def update_user_role(
         raise HTTPException(403, "Only the owner can assign admin role")
 
     target.role = payload.role
+    db.commit()
+    db.refresh(target)
+    return target
+
+
+@router.patch("/{user_id}/specialties", response_model=UserRead)
+def update_user_specialties(
+    user_id: uuid.UUID,
+    payload: UserSpecialtiesUpdate,
+    user: User = Depends(require_roles("owner", "admin")),
+    db: Session = Depends(get_db),
+):
+    target = db.get(User, user_id)
+    if target is None or target.organization_id != user.organization_id:
+        raise HTTPException(404, "User not found")
+
+    target.specialties = sorted({s.strip() for s in payload.specialties if s.strip()})
     db.commit()
     db.refresh(target)
     return target

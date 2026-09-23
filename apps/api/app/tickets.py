@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from .assignment import find_assignee_for_category
 from .auth import get_current_user
 from .db import get_db
 from .models import Ticket, TicketPriority, TicketStatus, User
@@ -127,6 +128,10 @@ def create_ticket(payload: TicketCreate, user: User = Depends(get_current_user),
     db.add(ticket)
     db.flush()
     ticket.response_deadline, ticket.resolution_deadline = calculate_sla(ticket.priority, ticket.created_at)
+    assignee = find_assignee_for_category(db, user.organization_id, ticket.category)
+    if assignee is not None:
+        ticket.assignee_id = assignee.id
+        ticket.status = TicketStatus.ASSIGNED
     db.commit()
     db.refresh(ticket)
     return ticket
