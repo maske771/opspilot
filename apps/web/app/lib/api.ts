@@ -103,6 +103,19 @@ export type CustomerRead = {
   email: string | null;
 };
 
+export type ChannelType = 'telegram' | 'line' | 'whatsapp' | 'email';
+
+export type ChannelRead = {
+  id: string;
+  organization_id: string;
+  type: ChannelType;
+  account_id: string;
+  name: string;
+  status: 'connected' | 'disconnected';
+  has_credentials: boolean;
+  created_at: string;
+};
+
 export type AttachmentRead = {
   id: string;
   content_type: string;

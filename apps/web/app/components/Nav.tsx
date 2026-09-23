@@ -13,7 +13,10 @@ const MANAGER_LINKS = [
   { href: '/customers', label: 'Customers' },
 ];
 
-const TEAM_LINK = { href: '/team', label: 'Team' };
+const ADMIN_LINKS = [
+  { href: '/channels', label: 'Channels' },
+  { href: '/team', label: 'Team' },
+];
 
 const FIELD_LINKS = [
   { href: '/', label: 'My Tickets' },
@@ -25,7 +28,7 @@ export function Nav() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const baseLinks = isManagerRole(user?.role) ? MANAGER_LINKS : FIELD_LINKS;
-  const links = isAdminRole(user?.role) ? [...baseLinks, TEAM_LINK] : baseLinks;
+  const links = isAdminRole(user?.role) ? [...baseLinks, ...ADMIN_LINKS] : baseLinks;
 
   return (
     <header className="nav">

@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
@@ -36,6 +37,7 @@ class ChannelUpdate(BaseModel):
     account_id: str | None = Field(default=None, min_length=1, max_length=255)
     name: str | None = Field(default=None, min_length=1, max_length=255)
     credentials: dict[str, str] | None = None
+    status: Literal["connected", "disconnected"] | None = None
 
 
 def normalize_channel_value(value: str, label: str) -> str:
@@ -99,6 +101,8 @@ def update_channel(channel_id: uuid.UUID, payload: ChannelUpdate, user: User = D
     try:
         for field, value in changes.items():
             if field != "credentials":
+                if value is None:
+                    continue
                 value = normalize_channel_value(value, field)
             setattr(channel, field, value)
     except ValueError as exc:

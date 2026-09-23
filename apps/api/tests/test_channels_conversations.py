@@ -2,7 +2,9 @@ import uuid
 
 import pytest
 
-from app.channel_routes import SUPPORTED_CHANNELS, normalize_channel_name, normalize_channel_value
+from pydantic import ValidationError
+
+from app.channel_routes import SUPPORTED_CHANNELS, ChannelUpdate, normalize_channel_name, normalize_channel_value
 from app.webhook_service import normalize_event
 
 
@@ -23,6 +25,13 @@ def test_channel_type_allowlist():
 
 def test_channel_name_is_trimmed():
     assert normalize_channel_name("  Telegram support  ") == "Telegram support"
+
+
+def test_channel_update_accepts_only_known_statuses():
+    assert ChannelUpdate(status="disconnected").status == "disconnected"
+    assert ChannelUpdate(status="connected").status == "connected"
+    with pytest.raises(ValidationError):
+        ChannelUpdate(status="paused")
 
 
 def test_conversation_ids_are_uuid_values():
