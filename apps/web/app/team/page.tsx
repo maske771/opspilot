@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Nav } from '../components/Nav';
 import { RequireAuth, useAuth } from '../lib/auth';
-import { apiFetch, ApiError, type UserRead } from '../lib/api';
+import { apiFetch, ApiError, type UserRead, type UserRole } from '../lib/api';
 import { isAdminRole } from '../lib/roles';
 
 const ASSIGNABLE_ROLES = ['staff', 'technician'];
+
+const CREATABLE_ROLES: UserRole[] = ['admin', 'manager', 'staff', 'technician'];
 
 const CATEGORIES = ['emergency', 'plumbing', 'electrical', 'hvac', 'appliance', 'access'];
 
@@ -16,6 +18,11 @@ function TeamPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState<UserRole>('technician');
+  const [creating, setCreating] = useState(false);
 
   const load = useCallback(() => {
     if (!token) return;
@@ -29,6 +36,28 @@ function TeamPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  async function createUser(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token) return;
+    setCreating(true);
+    setError(null);
+    try {
+      await apiFetch('/users', {
+        method: 'POST',
+        token,
+        body: { email, password, role },
+      });
+      setEmail('');
+      setPassword('');
+      setRole('technician');
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Не удалось добавить сотрудника');
+    } finally {
+      setCreating(false);
+    }
+  }
 
   async function toggleSpecialty(target: UserRead, category: string) {
     if (!token) return;
@@ -64,16 +93,46 @@ function TeamPage() {
     );
   }
 
-  const staff = users.filter((u) => ASSIGNABLE_ROLES.includes(u.role));
-
   return (
     <>
       <Nav />
       <main className="page">
         <h1 className="page-title">Team</h1>
         <p className="page-subtitle">
-          Специализации staff/technician — по ним движок назначения подбирает исполнителя под тематику заявки.
+          Сотрудники и их специализации — по specialties staff/technician движок назначения подбирает исполнителя под тематику заявки.
         </p>
+
+        <form onSubmit={createUser} className="card card-pad" style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
+          <input
+            required
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="input"
+            style={{ flex: 1 }}
+          />
+          <input
+            required
+            type="password"
+            placeholder="Пароль"
+            minLength={8}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="input"
+            style={{ flex: 1 }}
+          />
+          <select value={role} onChange={(e) => setRole(e.target.value as UserRole)} className="input">
+            {CREATABLE_ROLES.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
+          <button type="submit" disabled={creating} className="btn btn-accent">
+            {creating ? 'Добавление...' : 'Добавить сотрудника'}
+          </button>
+        </form>
 
         {error && (
           <div style={{ padding: 14, borderRadius: 10, background: 'var(--color-danger-soft)', color: 'var(--color-danger)', marginBottom: 20 }}>
@@ -83,40 +142,42 @@ function TeamPage() {
 
         {loading ? (
           <p style={{ color: 'var(--color-text-muted)' }}>Загрузка...</p>
-        ) : staff.length === 0 ? (
-          <div className="empty-state">Пока нет сотрудников с ролью staff/technician.</div>
+        ) : users.length === 0 ? (
+          <div className="empty-state">Пока нет сотрудников.</div>
         ) : (
           <div className="card">
-            {staff.map((member) => (
+            {users.map((member) => (
               <div key={member.id} className="list-row">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: ASSIGNABLE_ROLES.includes(member.role) ? 10 : 0 }}>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>{member.email}</div>
                   <span className="badge" style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)' }}>
                     {member.role}
                   </span>
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {CATEGORIES.map((category) => {
-                    const active = member.specialties.includes(category);
-                    return (
-                      <button
-                        key={category}
-                        type="button"
-                        disabled={savingId === member.id}
-                        onClick={() => toggleSpecialty(member, category)}
-                        className="badge"
-                        style={{
-                          cursor: 'pointer',
-                          border: '1px solid var(--color-border)',
-                          background: active ? 'var(--color-accent)' : 'var(--color-surface)',
-                          color: active ? '#fff' : 'var(--color-text-muted)',
-                        }}
-                      >
-                        {category}
-                      </button>
-                    );
-                  })}
-                </div>
+                {ASSIGNABLE_ROLES.includes(member.role) && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {CATEGORIES.map((category) => {
+                      const active = member.specialties.includes(category);
+                      return (
+                        <button
+                          key={category}
+                          type="button"
+                          disabled={savingId === member.id}
+                          onClick={() => toggleSpecialty(member, category)}
+                          className="badge"
+                          style={{
+                            cursor: 'pointer',
+                            border: '1px solid var(--color-border)',
+                            background: active ? 'var(--color-accent)' : 'var(--color-surface)',
+                            color: active ? '#fff' : 'var(--color-text-muted)',
+                          }}
+                        >
+                          {category}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             ))}
           </div>
