@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Nav } from '../components/Nav';
 import { RequireAuth, useAuth } from '../lib/auth';
 import { apiFetch, ApiError, type UserRead, type UserRole } from '../lib/api';
+import { useLocale } from '../lib/locale';
 import { isAdminRole } from '../lib/roles';
 
 const ASSIGNABLE_ROLES = ['staff', 'technician'];
@@ -14,6 +15,7 @@ const CATEGORIES = ['emergency', 'plumbing', 'electrical', 'hvac', 'appliance', 
 
 function TeamPage() {
   const { token, user } = useAuth();
+  const { t, tOr } = useLocale();
   const [users, setUsers] = useState<UserRead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,8 +31,9 @@ function TeamPage() {
     setLoading(true);
     apiFetch<UserRead[]>('/users', { token })
       .then(setUsers)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Не удалось загрузить сотрудников'))
+      .catch((err) => setError(err instanceof Error ? err.message : t('team.loadFailed')))
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   useEffect(() => {
@@ -53,7 +56,7 @@ function TeamPage() {
       setRole('technician');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось добавить сотрудника');
+      setError(err instanceof ApiError ? err.message : t('team.createFailed'));
     } finally {
       setCreating(false);
     }
@@ -76,7 +79,7 @@ function TeamPage() {
       });
     } catch (err) {
       setUsers((prev) => prev.map((u) => (u.id === target.id ? target : u)));
-      setError(err instanceof ApiError ? err.message : 'Не удалось сохранить специализацию');
+      setError(err instanceof ApiError ? err.message : t('team.saveFailed'));
     } finally {
       setSavingId(null);
     }
@@ -87,7 +90,7 @@ function TeamPage() {
       <>
         <Nav />
         <main className="page">
-          <div className="empty-state">Доступно только владельцу и админу.</div>
+          <div className="empty-state">{t('common.ownerAdminOnly')}</div>
         </main>
       </>
     );
@@ -97,16 +100,14 @@ function TeamPage() {
     <>
       <Nav />
       <main className="page">
-        <h1 className="page-title">Team</h1>
-        <p className="page-subtitle">
-          Сотрудники и их специализации — по specialties staff/technician движок назначения подбирает исполнителя под тематику заявки.
-        </p>
+        <h1 className="page-title">{t('nav.team')}</h1>
+        <p className="page-subtitle">{t('team.subtitle')}</p>
 
         <form onSubmit={createUser} className="card card-pad" style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
           <input
             required
             type="email"
-            placeholder="Email"
+            placeholder={t('auth.email')}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="input"
@@ -115,8 +116,9 @@ function TeamPage() {
           <input
             required
             type="password"
-            placeholder="Пароль"
+            placeholder={t('auth.password')}
             minLength={8}
+            autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="input"
@@ -125,12 +127,12 @@ function TeamPage() {
           <select value={role} onChange={(e) => setRole(e.target.value as UserRole)} className="input">
             {CREATABLE_ROLES.map((r) => (
               <option key={r} value={r}>
-                {r}
+                {tOr(`role.${r}`, r)}
               </option>
             ))}
           </select>
           <button type="submit" disabled={creating} className="btn btn-accent">
-            {creating ? 'Добавление...' : 'Добавить сотрудника'}
+            {creating ? t('common.adding') : t('team.addEmployee')}
           </button>
         </form>
 
@@ -141,9 +143,9 @@ function TeamPage() {
         )}
 
         {loading ? (
-          <p style={{ color: 'var(--color-text-muted)' }}>Загрузка...</p>
+          <p style={{ color: 'var(--color-text-muted)' }}>{t('common.loading')}</p>
         ) : users.length === 0 ? (
-          <div className="empty-state">Пока нет сотрудников.</div>
+          <div className="empty-state">{t('team.empty')}</div>
         ) : (
           <div className="card">
             {users.map((member) => (
@@ -151,7 +153,7 @@ function TeamPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: ASSIGNABLE_ROLES.includes(member.role) ? 10 : 0 }}>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>{member.email}</div>
                   <span className="badge" style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)' }}>
-                    {member.role}
+                    {tOr(`role.${member.role}`, member.role)}
                   </span>
                 </div>
                 {ASSIGNABLE_ROLES.includes(member.role) && (
@@ -172,7 +174,7 @@ function TeamPage() {
                             color: active ? '#fff' : 'var(--color-text-muted)',
                           }}
                         >
-                          {category}
+                          {tOr(`category.${category}`, category)}
                         </button>
                       );
                     })}

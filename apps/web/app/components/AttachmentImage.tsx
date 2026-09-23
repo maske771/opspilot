@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../lib/auth';
 import { API_BASE } from '../lib/api';
+import { useLocale } from '../lib/locale';
 
 export function AttachmentImage({ id }: { id: string }) {
   const { token } = useAuth();
+  const { t } = useLocale();
   const [src, setSrc] = useState<string | null>(null);
 
   useEffect(() => {
@@ -47,7 +49,7 @@ export function AttachmentImage({ id }: { id: string }) {
   return (
     <img
       src={src}
-      alt="Вложение"
+      alt={t('attachment.alt')}
       style={{ maxWidth: 240, maxHeight: 320, borderRadius: 10, display: 'block', objectFit: 'cover' }}
     />
   );

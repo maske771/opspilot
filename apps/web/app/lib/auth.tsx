@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch, type UserRead } from './api';
+import { useLocale } from './locale';
 
 const TOKEN_KEY = 'opspilot_token';
 
@@ -83,6 +84,7 @@ export function useAuth(): AuthState {
 
 export function RequireAuth({ children }: { children: React.ReactNode }) {
   const { token, loading } = useAuth();
+  const { t } = useLocale();
   const router = useRouter();
 
   useEffect(() => {
@@ -90,7 +92,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
   }, [loading, token, router]);
 
   if (loading || !token) {
-    return <main style={{ padding: 40, color: '#6b7280' }}>Загрузка...</main>;
+    return <main style={{ padding: 40, color: 'var(--color-text-muted)' }}>{t('common.loading')}</main>;
   }
   return <>{children}</>;
 }

@@ -14,7 +14,7 @@ function Home() {
     return <InboxView />;
   }
 
-  return <TicketsList title="My Tickets" defaultAssignee="me" />;
+  return <TicketsList mine />;
 }
 
 export default function HomePage() {

@@ -4,9 +4,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { Nav } from '../components/Nav';
 import { RequireAuth, useAuth } from '../lib/auth';
 import { apiFetch, ApiError, type CustomerRead } from '../lib/api';
+import { useLocale } from '../lib/locale';
 
 function CustomersList() {
   const { token, user } = useAuth();
+  const { t } = useLocale();
   const [customers, setCustomers] = useState<CustomerRead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,8 +23,9 @@ function CustomersList() {
     setLoading(true);
     apiFetch<CustomerRead[]>('/customers', { token })
       .then(setCustomers)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Не удалось загрузить клиентов'))
+      .catch((err) => setError(err instanceof Error ? err.message : t('customers.loadFailed')))
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   useEffect(() => {
@@ -45,7 +48,7 @@ function CustomersList() {
       setEmail('');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось создать клиента');
+      setError(err instanceof ApiError ? err.message : t('customers.createFailed'));
     } finally {
       setCreating(false);
     }
@@ -55,15 +58,15 @@ function CustomersList() {
     <>
       <Nav />
       <main className="page">
-        <h1 className="page-title">Customers</h1>
-        <p className="page-subtitle">Клиенты и их контактные данные.</p>
+        <h1 className="page-title">{t('nav.customers')}</h1>
+        <p className="page-subtitle">{t('customers.subtitle')}</p>
 
         <form onSubmit={createCustomer} className="card card-pad" style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
-          <input required placeholder="Имя" value={name} onChange={(e) => setName(e.target.value)} className="input" style={{ flex: 1 }} />
-          <input placeholder="Телефон" value={phone} onChange={(e) => setPhone(e.target.value)} className="input" style={{ flex: 1 }} />
-          <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="input" style={{ flex: 1 }} />
+          <input required placeholder={t('customers.name')} value={name} onChange={(e) => setName(e.target.value)} className="input" style={{ flex: 1 }} />
+          <input placeholder={t('customers.phone')} value={phone} onChange={(e) => setPhone(e.target.value)} className="input" style={{ flex: 1 }} />
+          <input placeholder={t('auth.email')} value={email} onChange={(e) => setEmail(e.target.value)} className="input" style={{ flex: 1 }} />
           <button type="submit" disabled={creating} className="btn btn-accent">
-            {creating ? 'Добавление...' : 'Добавить'}
+            {creating ? t('common.adding') : t('common.add')}
           </button>
         </form>
 
@@ -74,9 +77,9 @@ function CustomersList() {
         )}
 
         {loading ? (
-          <p style={{ color: 'var(--color-text-muted)' }}>Загрузка...</p>
+          <p style={{ color: 'var(--color-text-muted)' }}>{t('common.loading')}</p>
         ) : customers.length === 0 ? (
-          <div className="empty-state">Клиентов пока нет.</div>
+          <div className="empty-state">{t('customers.empty')}</div>
         ) : (
           <div className="card">
             {customers.map((customer) => (

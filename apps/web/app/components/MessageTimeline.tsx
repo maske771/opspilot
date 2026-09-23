@@ -1,9 +1,14 @@
+'use client';
+
 import type { MessageRead } from '../lib/api';
+import { useLocale } from '../lib/locale';
 import { AttachmentImage } from './AttachmentImage';
 
 export function MessageTimeline({ messages }: { messages: MessageRead[] }) {
+  const { t, formatDateTime } = useLocale();
+
   if (messages.length === 0) {
-    return <p style={{ fontSize: 13, color: 'var(--color-text-subtle)' }}>Сообщений пока нет.</p>;
+    return <p style={{ fontSize: 13, color: 'var(--color-text-subtle)' }}>{t('timeline.empty')}</p>;
   }
 
   return (
@@ -45,7 +50,7 @@ export function MessageTimeline({ messages }: { messages: MessageRead[] }) {
               textAlign: m.direction === 'outbound' ? 'right' : 'left',
             }}
           >
-            {new Date(m.created_at).toLocaleString()}
+            {formatDateTime(m.created_at)}
           </div>
         </div>
       ))}

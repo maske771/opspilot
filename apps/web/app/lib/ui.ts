@@ -1,20 +1,21 @@
 import type { TicketPriority, TicketStatus } from './api';
+import type { MessageKey } from './i18n/en';
 
-export const STATUS_LABELS: Record<TicketStatus, string> = {
-  new: 'New',
-  assigned: 'Assigned',
-  accepted: 'Accepted',
-  in_progress: 'In progress',
-  completed: 'Completed',
-  waiting_approval: 'Waiting approval',
-  closed: 'Closed',
+export const STATUS_KEYS: Record<TicketStatus, MessageKey> = {
+  new: 'status.new',
+  assigned: 'status.assigned',
+  accepted: 'status.accepted',
+  in_progress: 'status.in_progress',
+  completed: 'status.completed',
+  waiting_approval: 'status.waiting_approval',
+  closed: 'status.closed',
 };
 
-export const PRIORITY_LABELS: Record<TicketPriority, string> = {
-  critical: 'Critical',
-  high: 'High',
-  medium: 'Medium',
-  low: 'Low',
+export const PRIORITY_KEYS: Record<TicketPriority, MessageKey> = {
+  critical: 'priority.critical',
+  high: 'priority.high',
+  medium: 'priority.medium',
+  low: 'priority.low',
 };
 
 export function statusBadgeStyle(status: TicketStatus): React.CSSProperties {

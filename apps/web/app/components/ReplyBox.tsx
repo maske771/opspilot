@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useAuth } from '../lib/auth';
 import { apiFetch, ApiError, type MessageRead } from '../lib/api';
+import { useLocale } from '../lib/locale';
 
 export function ReplyBox({
   conversationId,
@@ -12,6 +13,7 @@ export function ReplyBox({
   onSent: (message: MessageRead) => void;
 }) {
   const { token } = useAuth();
+  const { t } = useLocale();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,10 +31,10 @@ export function ReplyBox({
       onSent(result.message);
       setText('');
       if (!result.delivered) {
-        setError('Сообщение сохранено, но не удалось доставить через канал — проверьте, подключены ли креды канала.');
+        setError(t('reply.notDelivered'));
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось отправить сообщение');
+      setError(err instanceof ApiError ? err.message : t('reply.failed'));
     } finally {
       setSending(false);
     }
@@ -44,12 +46,12 @@ export function ReplyBox({
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Написать клиенту..."
+          placeholder={t('reply.placeholder')}
           className="input"
           style={{ flex: 1 }}
         />
         <button type="submit" disabled={sending || !text.trim()} className="btn btn-accent">
-          {sending ? '...' : 'Отправить'}
+          {sending ? '...' : t('reply.send')}
         </button>
       </form>
       {error && <div style={{ fontSize: 12, color: 'var(--color-danger)', marginTop: 6 }}>{error}</div>}

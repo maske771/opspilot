@@ -4,9 +4,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { Nav } from '../components/Nav';
 import { RequireAuth, useAuth } from '../lib/auth';
 import { apiFetch, ApiError, type PropertyRead, type UnitRead } from '../lib/api';
+import { useLocale } from '../lib/locale';
 
 function PropertiesList() {
   const { token, user } = useAuth();
+  const { t } = useLocale();
   const [properties, setProperties] = useState<PropertyRead[]>([]);
   const [units, setUnits] = useState<Record<string, UnitRead[]>>({});
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -25,8 +27,9 @@ function PropertiesList() {
     setLoading(true);
     apiFetch<PropertyRead[]>('/properties', { token })
       .then(setProperties)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Не удалось загрузить объекты'))
+      .catch((err) => setError(err instanceof Error ? err.message : t('properties.loadFailed')))
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   useEffect(() => {
@@ -48,7 +51,7 @@ function PropertiesList() {
       setAddress('');
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось создать объект');
+      setError(err instanceof ApiError ? err.message : t('properties.createFailed'));
     } finally {
       setCreating(false);
     }
@@ -79,7 +82,7 @@ function PropertiesList() {
       setUnits((prev) => ({ ...prev, [propertyId]: [...(prev[propertyId] ?? []), created] }));
       setNewUnitNumber('');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось добавить юнит');
+      setError(err instanceof ApiError ? err.message : t('properties.addUnitFailed'));
     } finally {
       setAddingUnit(false);
     }
@@ -89,14 +92,14 @@ function PropertiesList() {
     <>
       <Nav />
       <main className="page">
-        <h1 className="page-title">Properties</h1>
-        <p className="page-subtitle">Объекты и юниты, привязанные к тикетам.</p>
+        <h1 className="page-title">{t('nav.properties')}</h1>
+        <p className="page-subtitle">{t('properties.subtitle')}</p>
 
         <form onSubmit={createProperty} className="card card-pad" style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
-          <input required placeholder="Название объекта" value={name} onChange={(e) => setName(e.target.value)} className="input" style={{ flex: 1 }} />
-          <input placeholder="Адрес (необязательно)" value={address} onChange={(e) => setAddress(e.target.value)} className="input" style={{ flex: 2 }} />
+          <input required placeholder={t('properties.namePlaceholder')} value={name} onChange={(e) => setName(e.target.value)} className="input" style={{ flex: 1 }} />
+          <input placeholder={t('properties.addressPlaceholder')} value={address} onChange={(e) => setAddress(e.target.value)} className="input" style={{ flex: 2 }} />
           <button type="submit" disabled={creating} className="btn btn-accent">
-            {creating ? 'Добавление...' : 'Добавить'}
+            {creating ? t('common.adding') : t('common.add')}
           </button>
         </form>
 
@@ -107,9 +110,9 @@ function PropertiesList() {
         )}
 
         {loading ? (
-          <p style={{ color: 'var(--color-text-muted)' }}>Загрузка...</p>
+          <p style={{ color: 'var(--color-text-muted)' }}>{t('common.loading')}</p>
         ) : properties.length === 0 ? (
-          <div className="empty-state">Объектов пока нет.</div>
+          <div className="empty-state">{t('properties.empty')}</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {properties.map((property) => (
@@ -124,6 +127,7 @@ function PropertiesList() {
                     padding: 16,
                     border: 0,
                     background: 'transparent',
+                    color: 'inherit',
                     cursor: 'pointer',
                     textAlign: 'left',
                   }}
@@ -134,12 +138,14 @@ function PropertiesList() {
                       <div style={{ fontSize: 12.5, color: 'var(--color-text-subtle)', marginTop: 4 }}>{property.address}</div>
                     )}
                   </div>
-                  <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{expanded === property.id ? 'Скрыть юниты' : 'Юниты'}</span>
+                  <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
+                    {expanded === property.id ? t('properties.hideUnits') : t('properties.units')}
+                  </span>
                 </button>
                 {expanded === property.id && (
                   <div style={{ borderTop: '1px solid var(--color-border-subtle)', padding: 16 }}>
                     {(units[property.id] ?? []).length === 0 ? (
-                      <p style={{ fontSize: 13, color: 'var(--color-text-subtle)', margin: '0 0 12px' }}>Юнитов пока нет.</p>
+                      <p style={{ fontSize: 13, color: 'var(--color-text-subtle)', margin: '0 0 12px' }}>{t('properties.noUnits')}</p>
                     ) : (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                         {(units[property.id] ?? []).map((unit) => (
@@ -151,14 +157,14 @@ function PropertiesList() {
                     )}
                     <form onSubmit={(e) => addUnit(property.id, e)} style={{ display: 'flex', gap: 8 }}>
                       <input
-                        placeholder="Номер юнита"
+                        placeholder={t('properties.unitNumber')}
                         value={newUnitNumber}
                         onChange={(e) => setNewUnitNumber(e.target.value)}
                         className="input"
                         style={{ flex: 1 }}
                       />
                       <button type="submit" disabled={addingUnit} className="btn btn-secondary">
-                        {addingUnit ? '...' : 'Добавить юнит'}
+                        {addingUnit ? '...' : t('properties.addUnit')}
                       </button>
                     </form>
                   </div>

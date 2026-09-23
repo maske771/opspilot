@@ -4,38 +4,40 @@ import { useCallback, useEffect, useState } from 'react';
 import { Nav } from '../components/Nav';
 import { RequireAuth, useAuth } from '../lib/auth';
 import { API_BASE, apiFetch, ApiError, type ChannelRead, type ChannelType } from '../lib/api';
+import type { MessageKey } from '../lib/i18n/en';
+import { useLocale } from '../lib/locale';
 import { isAdminRole } from '../lib/roles';
 
-type FieldDef = { key: string; label: string; secret?: boolean; optional?: boolean; placeholder?: string };
+type FieldDef = { key: string; label: MessageKey; secret?: boolean; optional?: boolean; example?: string };
 
 const CHANNEL_DEFS: Record<ChannelType, { label: string; verified: boolean; fields: FieldDef[] }> = {
   telegram: {
     label: 'Telegram',
     verified: true,
-    fields: [{ key: 'bot_token', label: 'Bot token', secret: true, placeholder: '123456:ABC-DEF...' }],
+    fields: [{ key: 'bot_token', label: 'field.botToken', secret: true, example: '123456:ABC-DEF...' }],
   },
   line: {
     label: 'LINE',
     verified: false,
-    fields: [{ key: 'channel_access_token', label: 'Channel access token', secret: true }],
+    fields: [{ key: 'channel_access_token', label: 'field.channelAccessToken', secret: true }],
   },
   whatsapp: {
     label: 'WhatsApp',
     verified: false,
     fields: [
-      { key: 'access_token', label: 'Access token', secret: true },
-      { key: 'phone_number_id', label: 'Phone number ID' },
+      { key: 'access_token', label: 'field.accessToken', secret: true },
+      { key: 'phone_number_id', label: 'field.phoneNumberId' },
     ],
   },
   email: {
     label: 'Email',
     verified: false,
     fields: [
-      { key: 'smtp_host', label: 'SMTP host', placeholder: 'smtp.example.com' },
-      { key: 'smtp_port', label: 'SMTP port', optional: true, placeholder: '587' },
-      { key: 'smtp_username', label: 'SMTP логин', optional: true },
-      { key: 'smtp_password', label: 'SMTP пароль', secret: true, optional: true },
-      { key: 'from_address', label: 'Адрес отправителя', placeholder: 'support@example.com' },
+      { key: 'smtp_host', label: 'field.smtpHost', example: 'smtp.example.com' },
+      { key: 'smtp_port', label: 'field.smtpPort', optional: true, example: '587' },
+      { key: 'smtp_username', label: 'field.smtpUsername', optional: true },
+      { key: 'smtp_password', label: 'field.smtpPassword', secret: true, optional: true },
+      { key: 'from_address', label: 'field.fromAddress', example: 'support@example.com' },
     ],
   },
 };
@@ -63,28 +65,33 @@ function CredentialInputs({
   values: Record<string, string>;
   onChange: (next: Record<string, string>) => void;
 }) {
+  const { t } = useLocale();
   return (
     <>
-      {CHANNEL_DEFS[type].fields.map((field) => (
-        <input
-          key={field.key}
-          required={!field.optional}
-          type={field.secret ? 'password' : 'text'}
-          autoComplete={field.secret ? 'new-password' : 'off'}
-          placeholder={field.optional ? `${field.label} (необязательно)` : field.label}
-          title={field.placeholder ? `${field.label}, например ${field.placeholder}` : field.label}
-          value={values[field.key] ?? ''}
-          onChange={(e) => onChange({ ...values, [field.key]: e.target.value })}
-          className="input"
-          style={{ flex: '1 1 220px' }}
-        />
-      ))}
+      {CHANNEL_DEFS[type].fields.map((field) => {
+        const label = t(field.label);
+        return (
+          <input
+            key={field.key}
+            required={!field.optional}
+            type={field.secret ? 'password' : 'text'}
+            autoComplete={field.secret ? 'new-password' : 'off'}
+            placeholder={field.optional ? `${label} (${t('common.optional')})` : label}
+            title={field.example ? `${label}, e.g. ${field.example}` : label}
+            value={values[field.key] ?? ''}
+            onChange={(e) => onChange({ ...values, [field.key]: e.target.value })}
+            className="input"
+            style={{ flex: '1 1 220px' }}
+          />
+        );
+      })}
     </>
   );
 }
 
 function ChannelsPage() {
   const { token, user } = useAuth();
+  const { t } = useLocale();
   const [channels, setChannels] = useState<ChannelRead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -105,8 +112,9 @@ function ChannelsPage() {
     setLoading(true);
     apiFetch<ChannelRead[]>('/channels', { token })
       .then(setChannels)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Не удалось загрузить каналы'))
+      .catch((err) => setError(err instanceof Error ? err.message : t('channels.loadFailed')))
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   useEffect(() => {
@@ -139,7 +147,7 @@ function ChannelsPage() {
       setCredentials({});
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Не удалось подключить канал');
+      setError(err instanceof ApiError ? err.message : t('channels.connectFailed'));
     } finally {
       setConnecting(false);
     }
@@ -163,7 +171,7 @@ function ChannelsPage() {
 
   async function saveCredentials(channel: ChannelRead, e: React.FormEvent) {
     e.preventDefault();
-    const ok = await patchChannel(channel, { credentials: compact(editCredentials) }, 'Не удалось обновить доступы');
+    const ok = await patchChannel(channel, { credentials: compact(editCredentials) }, t('channels.credentialsFailed'));
     if (ok) {
       setEditingId(null);
       setEditCredentials({});
@@ -176,7 +184,7 @@ function ChannelsPage() {
       setCopiedId(channel.id);
       setTimeout(() => setCopiedId((current) => (current === channel.id ? null : current)), 1500);
     } catch {
-      setError('Не удалось скопировать — выделите URL вручную');
+      setError(t('channels.copyFailed'));
     }
   }
 
@@ -185,7 +193,7 @@ function ChannelsPage() {
       <>
         <Nav />
         <main className="page">
-          <div className="empty-state">Доступно только владельцу и админу.</div>
+          <div className="empty-state">{t('common.ownerAdminOnly')}</div>
         </main>
       </>
     );
@@ -198,24 +206,22 @@ function ChannelsPage() {
     <>
       <Nav />
       <main className="page">
-        <h1 className="page-title">Channels</h1>
-        <p className="page-subtitle">
-          Каналы, через которые клиенты пишут в OpsPilot. После подключения укажите URL вебхука в настройках провайдера.
-        </p>
+        <h1 className="page-title">{t('nav.channels')}</h1>
+        <p className="page-subtitle">{t('channels.subtitle')}</p>
 
         <form onSubmit={connect} className="card card-pad" style={{ marginBottom: 24 }}>
-          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 12 }}>Подключить канал</div>
+          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 12 }}>{t('channels.connectTitle')}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
             <select value={type} onChange={(e) => changeType(e.target.value as ChannelType)} className="input" style={{ flex: '0 0 150px' }}>
-              {CHANNEL_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {CHANNEL_DEFS[t].label}
+              {CHANNEL_TYPES.map((ct) => (
+                <option key={ct} value={ct}>
+                  {CHANNEL_DEFS[ct].label}
                 </option>
               ))}
             </select>
             <input
               required
-              placeholder="Название (для команды)"
+              placeholder={t('channels.namePlaceholder')}
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="input"
@@ -223,8 +229,8 @@ function ChannelsPage() {
             />
             <input
               required
-              placeholder="Account ID"
-              title="Произвольный идентификатор канала. Входит в URL вебхука."
+              placeholder={t('channels.accountId')}
+              title={t('channels.accountIdHint')}
               value={accountId}
               onChange={(e) => setAccountId(e.target.value)}
               className="input"
@@ -234,11 +240,11 @@ function ChannelsPage() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 12 }}>
             <span style={{ fontSize: 12, color: 'var(--color-text-subtle)' }}>
-              Account ID — произвольный идентификатор (например, имя бота или адрес ящика); он входит в URL вебхука.
-              {!def.verified && ' Интеграция с этим каналом ещё не проверялась на реальном аккаунте.'}
+              {t('channels.accountIdHelp')}
+              {!def.verified && t('channels.notVerified')}
             </span>
             <button type="submit" disabled={connecting} className="btn btn-accent" style={{ flexShrink: 0 }}>
-              {connecting ? 'Подключение...' : 'Подключить'}
+              {connecting ? t('channels.connecting') : t('channels.connect')}
             </button>
           </div>
         </form>
@@ -250,9 +256,9 @@ function ChannelsPage() {
         )}
 
         {loading ? (
-          <p style={{ color: 'var(--color-text-muted)' }}>Загрузка...</p>
+          <p style={{ color: 'var(--color-text-muted)' }}>{t('common.loading')}</p>
         ) : sorted.length === 0 ? (
-          <div className="empty-state">Каналов пока нет. Подключите первый выше.</div>
+          <div className="empty-state">{t('channels.empty')}</div>
         ) : (
           <div className="card">
             {sorted.map((channel) => {
@@ -273,11 +279,11 @@ function ChannelsPage() {
                           color: connected ? 'var(--status-completed-text)' : 'var(--status-closed-text)',
                         }}
                       >
-                        {connected ? 'Подключён' : 'Отключён'}
+                        {connected ? t('channels.connected') : t('channels.disconnected')}
                       </span>
                       {!channel.has_credentials && (
                         <span className="badge" style={{ background: 'var(--priority-high-bg)', color: 'var(--priority-high-text)' }}>
-                          Нет доступов — бот не сможет отвечать
+                          {t('channels.noCredentials')}
                         </span>
                       )}
                     </div>
@@ -291,7 +297,7 @@ function ChannelsPage() {
                           setEditingId(editingId === channel.id ? null : channel.id);
                         }}
                       >
-                        Обновить доступы
+                        {t('channels.updateCredentials')}
                       </button>
                       <button
                         type="button"
@@ -301,20 +307,20 @@ function ChannelsPage() {
                           patchChannel(
                             channel,
                             { status: connected ? 'disconnected' : 'connected' },
-                            connected ? 'Не удалось отключить канал' : 'Не удалось подключить канал',
+                            connected ? t('channels.disconnectFailed') : t('channels.reconnectFailed'),
                           )
                         }
                       >
-                        {connected ? 'Отключить' : 'Подключить снова'}
+                        {connected ? t('channels.disconnect') : t('channels.reconnect')}
                       </button>
                     </div>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, fontSize: 12, color: 'var(--color-text-muted)' }}>
-                    <span style={{ flexShrink: 0 }}>Webhook:</span>
+                    <span style={{ flexShrink: 0 }}>{t('channels.webhook')}</span>
                     <code style={{ overflowWrap: 'anywhere' }}>{webhookUrl(channel)}</code>
                     <button type="button" className="btn btn-ghost" style={{ flexShrink: 0 }} onClick={() => copyWebhook(channel)}>
-                      {copiedId === channel.id ? 'Скопировано' : 'Копировать'}
+                      {copiedId === channel.id ? t('common.copied') : t('common.copy')}
                     </button>
                   </div>
 
@@ -325,14 +331,12 @@ function ChannelsPage() {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
                         <button type="submit" disabled={busy} className="btn btn-accent">
-                          {busy ? 'Сохранение...' : 'Сохранить'}
+                          {busy ? t('common.saving') : t('common.save')}
                         </button>
                         <button type="button" className="btn btn-ghost" onClick={() => setEditingId(null)}>
-                          Отмена
+                          {t('common.cancel')}
                         </button>
-                        <span style={{ fontSize: 12, color: 'var(--color-text-subtle)' }}>
-                          Текущие значения скрыты — введите все поля заново, они заменят старые.
-                        </span>
+                        <span style={{ fontSize: 12, color: 'var(--color-text-subtle)' }}>{t('channels.credentialsHelp')}</span>
                       </div>
                     </form>
                   )}
