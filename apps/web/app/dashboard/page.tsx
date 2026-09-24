@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Nav } from '../components/Nav';
 import { RequireAuth, useAuth } from '../lib/auth';
 import { apiFetch, type DashboardSummary } from '../lib/api';
 import { useLocale } from '../lib/locale';
@@ -26,7 +25,6 @@ function Dashboard() {
 
   return (
     <>
-      <Nav />
       <main className="page">
         <h1 className="page-title">{t('nav.dashboard')}</h1>
         <p className="page-subtitle">{t('dashboard.subtitle')}</p>

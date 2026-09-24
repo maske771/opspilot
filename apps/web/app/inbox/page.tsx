@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Nav } from '../components/Nav';
 import { MessageTimeline } from '../components/MessageTimeline';
 import { ReplyBox } from '../components/ReplyBox';
 import { RequireAuth, useAuth } from '../lib/auth';
@@ -55,7 +54,6 @@ export function InboxView() {
 
   return (
     <>
-      <Nav />
       <main className="page" style={{ maxWidth: 1180 }}>
         <h1 className="page-title">{t('nav.inbox')}</h1>
         <p className="page-subtitle">{t('inbox.subtitle')}</p>

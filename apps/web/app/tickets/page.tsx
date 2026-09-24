@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Nav } from '../components/Nav';
 import { RequireAuth, useAuth } from '../lib/auth';
 import { apiFetch, type TicketPriority, type TicketRead, type TicketStatus, type UserRead } from '../lib/api';
 import type { MessageKey } from '../lib/i18n/en';
@@ -84,7 +83,6 @@ export function TicketsList({ mine = false }: { mine?: boolean }) {
 
   return (
     <>
-      <Nav />
       <main className="page">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
           <h1 className="page-title" style={{ marginBottom: 0 }}>{t(mine ? 'nav.myTickets' : 'nav.tickets')}</h1>

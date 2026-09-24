@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Nav } from '../components/Nav';
 import { RequireAuth, useAuth } from '../lib/auth';
 import { API_BASE, apiFetch, ApiError, type ChannelRead, type ChannelType } from '../lib/api';
 import type { MessageKey } from '../lib/i18n/en';
@@ -232,7 +231,6 @@ function ChannelsPage() {
   if (!isAdminRole(user?.role)) {
     return (
       <>
-        <Nav />
         <main className="page">
           <div className="empty-state">{t('common.ownerAdminOnly')}</div>
         </main>
@@ -245,7 +243,6 @@ function ChannelsPage() {
 
   return (
     <>
-      <Nav />
       <main className="page">
         <h1 className="page-title">{t('nav.channels')}</h1>
         <p className="page-subtitle">{t('channels.subtitle')}</p>

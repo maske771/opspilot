@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Nav } from '../components/Nav';
 import { RequireAuth, useAuth } from '../lib/auth';
 import { apiFetch, ApiError, type CustomerRead } from '../lib/api';
 import { useLocale } from '../lib/locale';
@@ -56,7 +55,6 @@ function CustomersList() {
 
   return (
     <>
-      <Nav />
       <main className="page">
         <h1 className="page-title">{t('nav.customers')}</h1>
         <p className="page-subtitle">{t('customers.subtitle')}</p>

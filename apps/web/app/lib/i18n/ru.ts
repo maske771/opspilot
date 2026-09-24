@@ -26,6 +26,14 @@ export const ru: Messages = {
   'nav.customers': 'Клиенты',
   'nav.channels': 'Каналы',
   'nav.team': 'Команда',
+  'nav.menu': 'Главное меню',
+  'nav.group.work': 'Работа',
+  'nav.group.directory': 'Справочники',
+  'nav.group.admin': 'Администрирование',
+  'nav.collapse': 'Свернуть меню',
+  'nav.expand': 'Развернуть меню',
+  'nav.openMenu': 'Открыть меню',
+  'nav.closeMenu': 'Закрыть меню',
 
   'auth.email': 'Email',
   'auth.password': 'Пароль',
@@ -123,6 +131,7 @@ export const ru: Messages = {
   'ticket.responseDue': 'Срок ответа',
   'ticket.resolutionDue': 'Срок решения',
   'ticket.conversation': 'Переписка',
+  'ticket.tabDetails': 'Детали',
 
   'properties.subtitle': 'Объекты и юниты, привязанные к тикетам.',
   'properties.loadFailed': 'Не удалось загрузить объекты',

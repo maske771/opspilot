@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Nav } from '../components/Nav';
 import { RequireAuth, useAuth } from '../lib/auth';
 import { apiFetch, ApiError, type UserRead, type UserRole } from '../lib/api';
 import { useLocale } from '../lib/locale';
@@ -88,7 +87,6 @@ function TeamPage() {
   if (!isAdminRole(user?.role)) {
     return (
       <>
-        <Nav />
         <main className="page">
           <div className="empty-state">{t('common.ownerAdminOnly')}</div>
         </main>
@@ -98,7 +96,6 @@ function TeamPage() {
 
   return (
     <>
-      <Nav />
       <main className="page">
         <h1 className="page-title">{t('nav.team')}</h1>
         <p className="page-subtitle">{t('team.subtitle')}</p>

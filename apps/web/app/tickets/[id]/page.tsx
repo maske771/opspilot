@@ -1,10 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { Nav } from '../../components/Nav';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { MessageTimeline } from '../../components/MessageTimeline';
 import { ReplyBox } from '../../components/ReplyBox';
+import { Tabs, type TabDef } from '../../components/Tabs';
 import { RequireAuth, useAuth } from '../../lib/auth';
 import {
   apiFetch,
@@ -52,7 +52,9 @@ function TicketDetail() {
   const { t, tOr, formatDateTime } = useLocale();
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const ticketId = params.id;
+  const [tab, setTab] = useState<'details' | 'conversation'>(searchParams.get('tab') === 'conversation' ? 'conversation' : 'details');
 
   const [ticket, setTicket] = useState<TicketRead | null>(null);
   const [users, setUsers] = useState<UserRead[]>([]);
@@ -141,13 +143,27 @@ function TicketDetail() {
     }
   }
 
+  function selectTab(next: string) {
+    const value = next === 'conversation' ? 'conversation' : 'details';
+    setTab(value);
+    // A pure client-side switch: replaceState keeps the URL shareable without a server round-trip
+    // (router.replace on a dynamic route would refetch the page for every click).
+    window.history.replaceState(null, '', value === 'details' ? `/tickets/${ticketId}` : `/tickets/${ticketId}?tab=conversation`);
+  }
+
   const property = properties.find((p) => p.id === ticket?.property_id);
   const customer = customers.find((c) => c.id === ticket?.customer_id);
   const assignee = users.find((u) => u.id === ticket?.assignee_id);
 
+  const hasConversation = Boolean(ticket?.conversation_id);
+  const activeTab = hasConversation ? tab : 'details';
+  const tabs: TabDef[] = [
+    { id: 'details', label: t('ticket.tabDetails') },
+    ...(hasConversation ? [{ id: 'conversation', label: t('ticket.conversation'), count: messages.length }] : []),
+  ];
+
   return (
     <>
-      <Nav />
       <main className="page-narrow">
         <button onClick={() => router.push('/tickets')} className="btn btn-ghost" style={{ marginBottom: 16, marginLeft: -8 }}>
           {t('ticket.back')}
@@ -190,6 +206,10 @@ function TicketDetail() {
               </div>
             )}
 
+            <Tabs idPrefix="ticket" tabs={tabs} active={activeTab} onChange={selectTab} />
+
+            {activeTab === 'details' && (
+              <div role="tabpanel" id="ticket-panel-details" aria-labelledby="ticket-tab-details">
             <form onSubmit={saveChanges} className="card card-pad" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <label className="field">
                 {t('ticket.title')}
@@ -251,9 +271,11 @@ function TicketDetail() {
               </div>
             </div>
 
-            {ticket.conversation_id && (
-              <div style={{ marginTop: 24 }}>
-                <h2 style={{ fontSize: 15, marginBottom: 12 }}>{t('ticket.conversation')}</h2>
+              </div>
+            )}
+
+            {activeTab === 'conversation' && ticket.conversation_id && (
+              <div role="tabpanel" id="ticket-panel-conversation" aria-labelledby="ticket-tab-conversation" className="card card-pad">
                 <MessageTimeline messages={messages} />
                 <ReplyBox
                   conversationId={ticket.conversation_id}

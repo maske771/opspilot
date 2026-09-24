@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter, Noto_Sans_Thai } from 'next/font/google';
+import { AppFrame } from './components/AppFrame';
 import { AuthProvider } from './lib/auth';
 import { LocaleProvider } from './lib/locale';
 import { ThemeProvider } from './lib/theme';
@@ -23,7 +24,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <ThemeProvider>
           <LocaleProvider>
-            <AuthProvider>{children}</AuthProvider>
+            <AuthProvider>
+              <AppFrame>{children}</AppFrame>
+            </AuthProvider>
           </LocaleProvider>
         </ThemeProvider>
       </body>

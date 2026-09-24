@@ -24,6 +24,14 @@ export const en = {
   'nav.customers': 'Customers',
   'nav.channels': 'Channels',
   'nav.team': 'Team',
+  'nav.menu': 'Main menu',
+  'nav.group.work': 'Work',
+  'nav.group.directory': 'Directory',
+  'nav.group.admin': 'Administration',
+  'nav.collapse': 'Collapse menu',
+  'nav.expand': 'Expand menu',
+  'nav.openMenu': 'Open menu',
+  'nav.closeMenu': 'Close menu',
 
   'auth.email': 'Email',
   'auth.password': 'Password',
@@ -121,6 +129,7 @@ export const en = {
   'ticket.responseDue': 'Response due',
   'ticket.resolutionDue': 'Resolution due',
   'ticket.conversation': 'Conversation',
+  'ticket.tabDetails': 'Details',
 
   'properties.subtitle': 'Properties and units linked to tickets.',
   'properties.loadFailed': 'Could not load properties',

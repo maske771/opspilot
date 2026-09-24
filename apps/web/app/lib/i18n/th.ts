@@ -26,6 +26,14 @@ export const th: Messages = {
   'nav.customers': 'ลูกค้า',
   'nav.channels': 'ช่องทาง',
   'nav.team': 'ทีมงาน',
+  'nav.menu': 'เมนูหลัก',
+  'nav.group.work': 'การทำงาน',
+  'nav.group.directory': 'ข้อมูลอ้างอิง',
+  'nav.group.admin': 'การจัดการระบบ',
+  'nav.collapse': 'ย่อเมนู',
+  'nav.expand': 'ขยายเมนู',
+  'nav.openMenu': 'เปิดเมนู',
+  'nav.closeMenu': 'ปิดเมนู',
 
   'auth.email': 'อีเมล',
   'auth.password': 'รหัสผ่าน',
@@ -123,6 +131,7 @@ export const th: Messages = {
   'ticket.responseDue': 'กำหนดตอบกลับ',
   'ticket.resolutionDue': 'กำหนดแก้ไขเสร็จ',
   'ticket.conversation': 'การสนทนา',
+  'ticket.tabDetails': 'รายละเอียด',
 
   'properties.subtitle': 'ทรัพย์สินและยูนิตที่เชื่อมกับงาน',
   'properties.loadFailed': 'โหลดทรัพย์สินไม่สำเร็จ',

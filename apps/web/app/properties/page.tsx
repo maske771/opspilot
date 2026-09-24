@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Nav } from '../components/Nav';
 import { RequireAuth, useAuth } from '../lib/auth';
 import { apiFetch, ApiError, type PropertyRead, type UnitRead } from '../lib/api';
 import { useLocale } from '../lib/locale';
@@ -90,7 +89,6 @@ function PropertiesList() {
 
   return (
     <>
-      <Nav />
       <main className="page">
         <h1 className="page-title">{t('nav.properties')}</h1>
         <p className="page-subtitle">{t('properties.subtitle')}</p>
