@@ -56,7 +56,7 @@ export function Nav() {
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         <Preferences />
-        {user && <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{user.email}</span>}
+        {user && <span className="nav-user">{user.email}</span>}
         <button onClick={logout} className="btn btn-secondary">
           {t('common.signOut')}
         </button>
