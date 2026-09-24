@@ -1,4 +1,7 @@
+import asyncio
+import logging
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,9 +20,42 @@ from .conversation_routes import router as conversation_router
 from .inbox_routes import router as inbox_router
 from .webhook_routes import router as webhook_router
 from .ai_routes import router as ai_router
+from .log_redaction import RedactTokenFilter
 from .observability import instrumentator, router as observability_router
+from .telegram_webhook import register_all_telegram_webhooks
 
-app = FastAPI(title="OpsPilot API", version="0.1.0")
+logger = logging.getLogger("opspilot.startup")
+
+logging.getLogger("uvicorn.access").addFilter(RedactTokenFilter())
+
+# Only our own loggers go to INFO. Never enable INFO globally: httpx logs full request URLs,
+# and Telegram's include the bot token.
+_opspilot_logger = logging.getLogger("opspilot")
+if not _opspilot_logger.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("%(levelname)s:%(name)s:%(message)s"))
+    _opspilot_logger.addHandler(_handler)
+    _opspilot_logger.setLevel(logging.INFO)
+    _opspilot_logger.propagate = False
+
+
+async def _register_telegram_webhooks() -> None:
+    try:
+        count = await asyncio.to_thread(register_all_telegram_webhooks)
+        logger.info("Telegram webhooks registered on startup: %s", count)
+    except Exception:
+        logger.exception("Could not register Telegram webhooks on startup")
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    # Fire and forget: a slow or unreachable Telegram must not delay the API coming up.
+    task = asyncio.create_task(_register_telegram_webhooks())
+    yield
+    task.cancel()
+
+
+app = FastAPI(title="OpsPilot API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

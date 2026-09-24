@@ -1,35 +1,53 @@
-import hashlib
-import hmac
 import json
-import os
 import uuid
 
-from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi import APIRouter, Header, HTTPException, Query, Request
+from fastapi.responses import PlainTextResponse
 from sqlalchemy import text
 
 from .db import SessionLocal
 from .media import download_telegram_photo, save_bytes
 from .models import Channel, MessageAttachment
 from .outbound import send_message
+from .webhook_auth import is_authorized, token_matches
 from .webhook_service import ingest_normalized_event, normalize_event
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 PROVIDERS = {"line", "whatsapp", "telegram", "email"}
 
+CHANNEL_LOOKUP = text(
+    "SELECT id, organization_id, type, account_id, webhook_token FROM channels "
+    "WHERE type = :provider AND account_id = :account_id AND status = 'connected' "
+    "ORDER BY created_at DESC LIMIT 1"
+)
 
-def verify_signature(body: bytes, signature: str | None) -> bool:
-    secret = os.getenv("WEBHOOK_SECRET")
-    if not secret:
-        return os.getenv("APP_ENV", "development") != "production"
-    if not signature:
-        return False
-    expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
-    supplied = signature.removeprefix("sha256=")
-    return hmac.compare_digest(expected, supplied)
+
+@router.get("/whatsapp/{account_id}")
+def verify_whatsapp(
+    account_id: str,
+    mode: str | None = Query(default=None, alias="hub.mode"),
+    verify_token: str | None = Query(default=None, alias="hub.verify_token"),
+    challenge: str | None = Query(default=None, alias="hub.challenge"),
+):
+    """Meta's webhook verification handshake: echo the challenge when the verify token is this channel's webhook token."""
+    with SessionLocal() as db:
+        channel = db.execute(CHANNEL_LOOKUP, {"provider": "whatsapp", "account_id": account_id.strip()}).mappings().first()
+    if mode != "subscribe" or challenge is None or channel is None or not token_matches(channel["webhook_token"], verify_token):
+        raise HTTPException(403, "Verification failed")
+    return PlainTextResponse(challenge)
 
 
 @router.post("/{provider}/{account_id}")
-async def receive_webhook(provider: str, account_id: str, request: Request, x_webhook_signature: str | None = Header(default=None), x_event_id: str | None = Header(default=None)):
+async def receive_webhook(
+    provider: str,
+    account_id: str,
+    request: Request,
+    token: str | None = Query(default=None),
+    x_webhook_token: str | None = Header(default=None),
+    x_telegram_bot_api_secret_token: str | None = Header(default=None),
+    x_webhook_signature: str | None = Header(default=None),
+    x_event_id: str | None = Header(default=None),
+):
     provider = provider.strip().lower()
     account_id = account_id.strip()
     if provider not in PROVIDERS:
@@ -38,20 +56,22 @@ async def receive_webhook(provider: str, account_id: str, request: Request, x_we
         raise HTTPException(400, "Account id must not be blank")
 
     body = await request.body()
-    if not verify_signature(body, x_webhook_signature):
-        raise HTTPException(401, "Invalid webhook signature")
-    try:
-        payload = json.loads(body or b"{}")
-    except json.JSONDecodeError as exc:
-        raise HTTPException(400, "Webhook payload must be valid JSON") from exc
-    if not isinstance(payload, dict):
-        raise HTTPException(400, "Webhook payload must be a JSON object")
 
     db = SessionLocal()
     try:
-        channel = db.execute(text("SELECT id, organization_id, type, account_id FROM channels WHERE type = :provider AND account_id = :account_id AND status = 'connected' ORDER BY created_at DESC LIMIT 1"), {"provider": provider, "account_id": account_id}).mappings().first()
-        if channel is None:
-            raise HTTPException(404, "Connected channel not found")
+        channel = db.execute(CHANNEL_LOOKUP, {"provider": provider, "account_id": account_id}).mappings().first()
+        # Same answer for "no such channel" and "bad credentials" so channel ids can't be enumerated.
+        if channel is None or not is_authorized(
+            channel["webhook_token"], (token, x_webhook_token, x_telegram_bot_api_secret_token), body, x_webhook_signature
+        ):
+            raise HTTPException(401, "Invalid webhook credentials")
+
+        try:
+            payload = json.loads(body or b"{}")
+        except json.JSONDecodeError as exc:
+            raise HTTPException(400, "Webhook payload must be valid JSON") from exc
+        if not isinstance(payload, dict):
+            raise HTTPException(400, "Webhook payload must be a JSON object")
 
         event_id = x_event_id or payload.get("event_id") or payload.get("id") or str(uuid.uuid4())
         result = db.execute(text("""INSERT INTO webhook_events (organization_id, channel_id, provider, account_id, external_event_id, payload, signature_valid)

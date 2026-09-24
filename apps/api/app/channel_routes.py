@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 
 from .auth import get_current_user, require_roles
 from .db import get_db
-from .models import Channel, User
+from .models import Channel, User, UserRole, new_webhook_token
+from .telegram_webhook import register_telegram_webhook, webhook_url
 
 router = APIRouter(prefix="/channels", tags=["channels"])
 SUPPORTED_CHANNELS = {"line", "whatsapp", "telegram", "email"}
@@ -24,6 +25,7 @@ class ChannelRead(BaseModel):
     name: str
     status: str
     has_credentials: bool
+    webhook_token: str | None = None
     created_at: datetime
 
 
@@ -51,9 +53,18 @@ def normalize_channel_name(name: str) -> str:
     return normalize_channel_value(name, "name")
 
 
+def visible_channel(channel: Channel, user: User) -> ChannelRead:
+    """The webhook token authenticates inbound traffic, so only owners and admins get to see it."""
+    item = ChannelRead.model_validate(channel)
+    if user.role not in (UserRole.OWNER, UserRole.ADMIN):
+        item.webhook_token = None
+    return item
+
+
 @router.get("", response_model=list[ChannelRead])
 def list_channels(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return list(db.scalars(select(Channel).where(Channel.organization_id == user.organization_id).order_by(Channel.created_at)).all())
+    channels = db.scalars(select(Channel).where(Channel.organization_id == user.organization_id).order_by(Channel.created_at)).all()
+    return [visible_channel(channel, user) for channel in channels]
 
 
 @router.post("/{channel_type}/connect", response_model=ChannelRead, status_code=201)
@@ -70,6 +81,8 @@ def connect_channel(channel_type: str, payload: ChannelConnect, user: User = Dep
     db.add(channel)
     db.commit()
     db.refresh(channel)
+    if channel.type == "telegram":
+        register_telegram_webhook(channel)
     return channel
 
 
@@ -89,7 +102,38 @@ def get_channel(channel_id: uuid.UUID, user: User = Depends(get_current_user), d
     channel = db.get(Channel, channel_id)
     if channel is None or channel.organization_id != user.organization_id:
         raise HTTPException(404, "Channel not found")
+    return visible_channel(channel, user)
+
+
+@router.post("/{channel_id}/rotate-webhook-token", response_model=ChannelRead)
+def rotate_webhook_token(channel_id: uuid.UUID, user: User = Depends(require_roles("owner", "admin")), db: Session = Depends(get_db)):
+    """Issue a new webhook token; the old URL stops working at once. Telegram is re-pointed automatically."""
+    channel = db.get(Channel, channel_id)
+    if channel is None or channel.organization_id != user.organization_id:
+        raise HTTPException(404, "Channel not found")
+    channel.webhook_token = new_webhook_token()
+    db.commit()
+    db.refresh(channel)
+    if channel.type == "telegram":
+        register_telegram_webhook(channel)
     return channel
+
+
+@router.post("/{channel_id}/register-webhook")
+def register_webhook(channel_id: uuid.UUID, user: User = Depends(require_roles("owner", "admin")), db: Session = Depends(get_db)) -> dict[str, bool]:
+    """Point the Telegram bot's webhook at this channel (also done automatically on connect, rotate and API start)."""
+    channel = db.get(Channel, channel_id)
+    if channel is None or channel.organization_id != user.organization_id:
+        raise HTTPException(404, "Channel not found")
+    if channel.type != "telegram":
+        raise HTTPException(400, "Automatic webhook registration is only available for Telegram")
+    if webhook_url(channel) is None:
+        raise HTTPException(400, "PUBLIC_API_URL is not configured on the server")
+    if not (channel.credentials or {}).get("bot_token"):
+        raise HTTPException(400, "The channel has no bot token")
+    if not register_telegram_webhook(channel):
+        raise HTTPException(502, "Telegram did not accept the webhook")
+    return {"registered": True}
 
 
 @router.patch("/{channel_id}", response_model=ChannelRead)
@@ -109,6 +153,8 @@ def update_channel(channel_id: uuid.UUID, payload: ChannelUpdate, user: User = D
         raise HTTPException(400, str(exc)) from exc
     db.commit()
     db.refresh(channel)
+    if channel.type == "telegram" and channel.status == "connected" and ("credentials" in changes or "status" in changes):
+        register_telegram_webhook(channel)
     return channel
 
 

@@ -63,9 +63,13 @@ POST /channels/{type}/disconnect
 GET  /channels/{id}
 PATCH /channels/{id}
 POST /channels/{id}/test
+POST /channels/{id}/rotate-webhook-token
+POST /channels/{id}/register-webhook
 ```
 
 Supported channel types in the MVP are `line`, `whatsapp`, `telegram`, and `email`. Connect/disconnect/configuration operations require `owner` or `admin`. All reads and mutations are organization-scoped.
+
+Every channel has a random `webhook_token`. It authenticates inbound webhooks, so it is returned only to `owner`/`admin` (other roles see `null`). `rotate-webhook-token` replaces it (the old webhook URL stops working at once). `register-webhook` (Telegram only) points the bot's webhook at the channel; this also happens automatically on connect, on credential/status changes, on token rotation and at API start. It needs `PUBLIC_API_URL` (e.g. `https://api.example.com`) to be set on the server.
 
 Connect accepts both a provider `account_id` (the stable external account identifier used by webhooks) and a human-readable `name`.
 
@@ -78,9 +82,16 @@ POST /webhooks/line/{account_id}
 POST /webhooks/whatsapp/{account_id}
 POST /webhooks/telegram/{account_id}
 POST /webhooks/email/{account_id}
+GET  /webhooks/whatsapp/{account_id}   (Meta verification handshake)
 ```
 
-Inbound requests are persisted in `webhook_events`. The handler validates `X-Webhook-Signature` using `WEBHOOK_SECRET` when configured. The accepted signature is an HMAC-SHA256 digest of the raw request body; both the raw digest and `sha256=<digest>` forms are accepted. In production, `WEBHOOK_SECRET` is mandatory. Development may accept unsigned requests when no secret is configured.
+Inbound requests are persisted in `webhook_events`. Every request must authenticate against the connected channel it targets, in any of these ways:
+
+- the channel's `webhook_token` as the `token` query parameter (works for every provider: register the URL `.../webhooks/{provider}/{account_id}?token=...`);
+- the same token in the `X-Webhook-Token` header, or in Telegram's `X-Telegram-Bot-Api-Secret-Token` header (set through `setWebhook`'s `secret_token`, which the API does automatically);
+- an `X-Webhook-Signature` header: HMAC-SHA256 of the raw body with `WEBHOOK_SECRET` (raw digest or `sha256=<digest>`). This never passes when `WEBHOOK_SECRET` is unset.
+
+Anything else gets `401 Invalid webhook credentials`, the same answer whether or not the channel exists, so channel ids cannot be enumerated. There is no unauthenticated mode, in development or production. For WhatsApp, the `hub.verify_token` of the GET handshake is the channel's `webhook_token`.
 
 `X-Event-Id` is used for idempotency; when absent, the payload `event_id`/`id` is used, otherwise a UUID is generated. Duplicate events for the same organization/provider/account/event ID are ignored.
 

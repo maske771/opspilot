@@ -113,6 +113,7 @@ export type ChannelRead = {
   name: string;
   status: 'connected' | 'disconnected';
   has_credentials: boolean;
+  webhook_token: string | null;
   created_at: string;
 };
 

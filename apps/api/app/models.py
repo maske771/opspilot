@@ -1,8 +1,9 @@
 import enum
+import secrets
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ARRAY, DateTime, Enum, ForeignKey, String, Text, UniqueConstraint, func
+from sqlalchemy import ARRAY, DateTime, Enum, ForeignKey, String, Text, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -12,6 +13,10 @@ from .db import Base
 def pg_enum(enum_cls: type[enum.Enum], name: str) -> Enum:
     """Store Postgres enums by their .value (e.g. "owner"), not the member .name ("OWNER")."""
     return Enum(enum_cls, name=name, values_callable=lambda cls: [member.value for member in cls])
+
+
+def new_webhook_token() -> str:
+    return secrets.token_urlsafe(32)
 
 
 class UserRole(str, enum.Enum):
@@ -124,6 +129,11 @@ class Channel(Base):
     name: Mapped[str] = mapped_column(String(255))
     status: Mapped[str] = mapped_column(String(30), default="disconnected", index=True)
     credentials: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    webhook_token: Mapped[str] = mapped_column(
+        Text(),
+        default=new_webhook_token,
+        server_default=text("replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '')"),
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     @property

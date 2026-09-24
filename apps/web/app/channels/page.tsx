@@ -52,8 +52,17 @@ function compact(values: Record<string, string>): Record<string, string> {
   );
 }
 
-function webhookUrl(channel: ChannelRead): string {
+function webhookBase(channel: ChannelRead): string {
   return `${API_BASE}/webhooks/${channel.type}/${encodeURIComponent(channel.account_id)}`;
+}
+
+function webhookUrl(channel: ChannelRead): string {
+  return channel.webhook_token ? `${webhookBase(channel)}?token=${encodeURIComponent(channel.webhook_token)}` : webhookBase(channel);
+}
+
+// The token is a credential: keep it out of screenshots and shoulder-surfing; "Copy" still copies the full URL.
+function maskedWebhookUrl(channel: ChannelRead): string {
+  return channel.webhook_token ? `${webhookBase(channel)}?token=••••••••` : webhookBase(channel);
 }
 
 function CredentialInputs({
@@ -95,6 +104,7 @@ function ChannelsPage() {
   const [channels, setChannels] = useState<ChannelRead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const [type, setType] = useState<ChannelType>('telegram');
   const [name, setName] = useState('');
@@ -178,6 +188,37 @@ function ChannelsPage() {
     }
   }
 
+  async function rotateToken(channel: ChannelRead) {
+    if (!token || !window.confirm(t('channels.rotateConfirm'))) return;
+    setBusyId(channel.id);
+    setError(null);
+    setNotice(null);
+    try {
+      const updated = await apiFetch<ChannelRead>(`/channels/${channel.id}/rotate-webhook-token`, { method: 'POST', token });
+      setChannels((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+      setNotice(t('channels.rotated'));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('channels.rotateFailed'));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function registerWebhook(channel: ChannelRead) {
+    if (!token) return;
+    setBusyId(channel.id);
+    setError(null);
+    setNotice(null);
+    try {
+      await apiFetch(`/channels/${channel.id}/register-webhook`, { method: 'POST', token });
+      setNotice(t('channels.webhookRegistered'));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('channels.registerFailed'));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function copyWebhook(channel: ChannelRead) {
     try {
       await navigator.clipboard.writeText(webhookUrl(channel));
@@ -255,6 +296,12 @@ function ChannelsPage() {
           </div>
         )}
 
+        {notice && (
+          <div style={{ padding: 14, borderRadius: 10, background: 'var(--status-completed-bg)', color: 'var(--status-completed-text)', marginBottom: 20 }}>
+            {notice}
+          </div>
+        )}
+
         {loading ? (
           <p style={{ color: 'var(--color-text-muted)' }}>{t('common.loading')}</p>
         ) : sorted.length === 0 ? (
@@ -318,10 +365,18 @@ function ChannelsPage() {
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, fontSize: 12, color: 'var(--color-text-muted)' }}>
                     <span style={{ flexShrink: 0 }}>{t('channels.webhook')}</span>
-                    <code style={{ overflowWrap: 'anywhere' }}>{webhookUrl(channel)}</code>
+                    <code style={{ overflowWrap: 'anywhere' }}>{maskedWebhookUrl(channel)}</code>
                     <button type="button" className="btn btn-ghost" style={{ flexShrink: 0 }} onClick={() => copyWebhook(channel)}>
                       {copiedId === channel.id ? t('common.copied') : t('common.copy')}
                     </button>
+                    <button type="button" className="btn btn-ghost" style={{ flexShrink: 0 }} disabled={busy} onClick={() => rotateToken(channel)}>
+                      {t('channels.rotateToken')}
+                    </button>
+                    {channel.type === 'telegram' && (
+                      <button type="button" className="btn btn-ghost" style={{ flexShrink: 0 }} disabled={busy} onClick={() => registerWebhook(channel)}>
+                        {t('channels.registerWebhook')}
+                      </button>
+                    )}
                   </div>
 
                   {editingId === channel.id && (

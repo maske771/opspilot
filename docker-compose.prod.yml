@@ -6,6 +6,7 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - ACCESS_TOKEN_MINUTES=${ACCESS_TOKEN_MINUTES:-60}
       - CORS_ORIGINS=https://${BASE_DOMAIN}
+      - PUBLIC_API_URL=https://api.${BASE_DOMAIN}
     volumes:
       - media_data:/media
     depends_on:
