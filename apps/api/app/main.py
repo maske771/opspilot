@@ -20,7 +20,7 @@ from .conversation_routes import router as conversation_router
 from .inbox_routes import router as inbox_router
 from .webhook_routes import router as webhook_router
 from .ai_routes import router as ai_router
-from .log_redaction import RedactTokenFilter
+from .log_redaction import RedactingFormatter, RedactTokenFilter
 from .observability import instrumentator, router as observability_router
 from .telegram_webhook import register_all_telegram_webhooks
 
@@ -33,7 +33,7 @@ logging.getLogger("uvicorn.access").addFilter(RedactTokenFilter())
 _opspilot_logger = logging.getLogger("opspilot")
 if not _opspilot_logger.handlers:
     _handler = logging.StreamHandler()
-    _handler.setFormatter(logging.Formatter("%(levelname)s:%(name)s:%(message)s"))
+    _handler.setFormatter(RedactingFormatter("%(levelname)s:%(name)s:%(message)s"))
     _opspilot_logger.addHandler(_handler)
     _opspilot_logger.setLevel(logging.INFO)
     _opspilot_logger.propagate = False
