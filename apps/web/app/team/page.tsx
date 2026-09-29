@@ -149,8 +149,15 @@ function TeamPage() {
               <div key={member.id} className="list-row">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: ASSIGNABLE_ROLES.includes(member.role) ? 10 : 0 }}>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>{member.email}</div>
-                  <span className="badge" style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)' }}>
-                    {tOr(`role.${member.role}`, member.role)}
+                  <span style={{ display: 'flex', gap: 6 }}>
+                    {member.telegram_linked && (
+                      <span className="badge" style={{ background: 'var(--status-completed-bg)', color: 'var(--status-completed-text)' }}>
+                        {t('team.telegramLinked')}
+                      </span>
+                    )}
+                    <span className="badge" style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)' }}>
+                      {tOr(`role.${member.role}`, member.role)}
+                    </span>
                   </span>
                 </div>
                 {ASSIGNABLE_ROLES.includes(member.role) && (

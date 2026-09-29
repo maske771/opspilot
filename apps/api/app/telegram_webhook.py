@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 from .db import SessionLocal
 from .models import Channel
+from .telegram_api import api_base
 
 logger = logging.getLogger("opspilot.telegram_webhook")
 
@@ -27,7 +28,7 @@ def register_telegram_webhook(channel: Channel) -> bool:
         return False
     try:
         response = httpx.post(
-            f"https://api.telegram.org/bot{bot_token}/setWebhook",
+            f"{api_base()}/bot{bot_token}/setWebhook",
             json={"url": url, "secret_token": channel.webhook_token},
             timeout=10,
         )
@@ -40,6 +41,20 @@ def register_telegram_webhook(channel: Channel) -> bool:
         return False
     logger.info("Registered Telegram webhook for channel %s", channel.id)
     return True
+
+
+def bot_username(channel: Channel) -> str | None:
+    """The bot's @username (for a t.me deep link). Best effort; never raises or logs the token."""
+    bot_token = (channel.credentials or {}).get("bot_token")
+    if channel.type != "telegram" or not bot_token:
+        return None
+    try:
+        response = httpx.get(f"{api_base()}/bot{bot_token}/getMe", timeout=10)
+        response.raise_for_status()
+        return response.json()["result"].get("username")
+    except (httpx.HTTPError, KeyError, ValueError, TypeError) as exc:
+        logger.warning("Telegram getMe failed for channel %s: %s", channel.id, type(exc).__name__)
+        return None
 
 
 def register_all_telegram_webhooks() -> int:

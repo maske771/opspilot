@@ -22,6 +22,8 @@ from .webhook_routes import router as webhook_router
 from .ai_routes import router as ai_router
 from .log_redaction import RedactingFormatter, RedactTokenFilter
 from .observability import instrumentator, router as observability_router
+from .profile_routes import router as profile_router
+from .sla_monitor import monitor_enabled, run_forever as run_sla_monitor
 from .telegram_webhook import register_all_telegram_webhooks
 
 logger = logging.getLogger("opspilot.startup")
@@ -50,9 +52,12 @@ async def _register_telegram_webhooks() -> None:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     # Fire and forget: a slow or unreachable Telegram must not delay the API coming up.
-    task = asyncio.create_task(_register_telegram_webhooks())
+    tasks = [asyncio.create_task(_register_telegram_webhooks())]
+    if monitor_enabled():
+        tasks.append(asyncio.create_task(run_sla_monitor()))
     yield
-    task.cancel()
+    for task in tasks:
+        task.cancel()
 
 
 app = FastAPI(title="OpsPilot API", version="0.1.0", lifespan=lifespan)
@@ -66,6 +71,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(profile_router)
 app.include_router(attachment_router)
 app.include_router(organization_router)
 app.include_router(users_router)

@@ -103,7 +103,11 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
         </div>
         <div className="topbar-right">
           <Preferences />
-          {user && <span className="nav-user">{user.email}</span>}
+          {user && (
+            <Link href="/profile" className="nav-user" title={t('profile.title')}>
+              {user.email}
+            </Link>
+          )}
           <button onClick={logout} className="btn btn-secondary">
             {t('common.signOut')}
           </button>

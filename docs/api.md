@@ -128,6 +128,31 @@ Tickets may optionally reference the originating conversation via `conversation_
 
 On creation (both `POST /tickets` and webhook-generated tickets), the auto-assignment engine looks for a `staff`/`technician` user in the organization whose `specialties` include the ticket's `category`, and picks the one with the fewest currently open (non-closed) tickets. If a match is found, the ticket is assigned and moves straight to `assigned`; otherwise it is left unassigned in `new` for manual triage.
 
+## Staff notifications and SLA monitor
+
+Staff hear about their work through the organization's Telegram bot.
+
+```text
+GET    /me/telegram              { linked, channel_available }
+POST   /me/telegram-link-code    { code, expires_at, deep_link }   (409 when no Telegram bot is connected)
+DELETE /me/telegram-link
+```
+
+Linking: a signed-in user requests a code (8 characters, valid 10 minutes, single use, scoped to their organization) and sends `/link CODE` — or opens the `t.me/<bot>?start=CODE` deep link, which sends `/start CODE` — to the bot in a private chat. The webhook binds that chat to the user, remembers their Telegram language (`en`/`ru`/`th`, English otherwise) for all later messages, and confirms. Link commands never create customer conversations or tickets. `GET /users` exposes `telegram_linked`.
+
+A background monitor (`sla_monitor.py`, started with the API, every `SLA_WORKER_INTERVAL_SECONDS`, default 30; disable with `SLA_WORKER_ENABLED=false`; guarded by a Postgres advisory lock) looks at open tickets and sends, each **at most once per ticket, recipient and kind** (`ticket_notifications`):
+
+| Kind | Recipient | When |
+|---|---|---|
+| `assigned` | assignee | ticket is assigned (auto, manual or reassigned), created within the last 48 h |
+| `response_soon` / `resolution_soon` | assignee | 20 % (min 2 min) / 10 % (min 5 min) of the SLA window is left |
+| `response_overdue` / `resolution_overdue` | assignee | the deadline has passed |
+| `escalation_response` / `escalation_resolution` | owner, admins and managers of the organization (not the assignee twice) | the deadline has passed; also when nobody is assigned |
+
+The response deadline applies while the ticket is `new` or `assigned`; the resolution deadline until it is `completed`, `waiting_approval` or `closed`. Deadlines missed more than 24 h ago are treated as history and not announced. A failed send is retried up to 3 times; recipients without a linked Telegram are recorded as `skipped` and not retried. Messages are localized and carry a link to the ticket built from `PUBLIC_WEB_URL`.
+
+Environment: `PUBLIC_WEB_URL` (links in messages), `SLA_WORKER_INTERVAL_SECONDS`, `SLA_WORKER_ENABLED`, and `TELEGRAM_API_BASE` (defaults to `https://api.telegram.org`; lets tests and local runs use a fake server).
+
 ## Dashboard / analytics
 
 Implemented now:

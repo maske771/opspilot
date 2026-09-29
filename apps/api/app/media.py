@@ -5,6 +5,8 @@ from pathlib import Path
 
 import httpx
 
+from .telegram_api import api_base
+
 logger = logging.getLogger("opspilot.media")
 
 MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", "/media"))
@@ -26,10 +28,10 @@ def download_telegram_photo(bot_token: str, file_id: str) -> bytes | None:
     """Fetch a Telegram photo's bytes via getFile + the file download endpoint. Telegram always
     re-encodes uploaded photos as JPEG, so the content type is fixed."""
     try:
-        info = httpx.get(f"https://api.telegram.org/bot{bot_token}/getFile", params={"file_id": file_id}, timeout=10)
+        info = httpx.get(f"{api_base()}/bot{bot_token}/getFile", params={"file_id": file_id}, timeout=10)
         info.raise_for_status()
         file_path = info.json()["result"]["file_path"]
-        content = httpx.get(f"https://api.telegram.org/file/bot{bot_token}/{file_path}", timeout=20)
+        content = httpx.get(f"{api_base()}/file/bot{bot_token}/{file_path}", timeout=20)
         content.raise_for_status()
         return content.content
     except Exception:

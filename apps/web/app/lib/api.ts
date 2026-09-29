@@ -49,6 +49,18 @@ export type UserRead = {
   email: string;
   role: UserRole;
   specialties: string[];
+  telegram_linked?: boolean;
+};
+
+export type TelegramStatus = {
+  linked: boolean;
+  channel_available: boolean;
+};
+
+export type TelegramLinkCode = {
+  code: string;
+  expires_at: string;
+  deep_link: string | null;
 };
 
 export type TicketStatus =

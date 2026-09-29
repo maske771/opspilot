@@ -6,6 +6,7 @@ from typing import Any
 import httpx
 
 from .models import Channel
+from .telegram_api import api_base
 
 logger = logging.getLogger("opspilot.outbound")
 
@@ -50,7 +51,7 @@ def _send_telegram(credentials: dict[str, Any], recipient: str, text: str) -> bo
         logger.warning("Telegram channel missing bot_token")
         return False
     response = httpx.post(
-        f"https://api.telegram.org/bot{bot_token}/sendMessage",
+        f"{api_base()}/bot{bot_token}/sendMessage",
         json={"chat_id": recipient, "text": text},
         timeout=10,
     )

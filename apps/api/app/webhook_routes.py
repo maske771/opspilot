@@ -8,7 +8,9 @@ from sqlalchemy import text
 from .db import SessionLocal
 from .media import download_telegram_photo, save_bytes
 from .models import Channel, MessageAttachment
+from .notifications import render
 from .outbound import send_message
+from .staff_link import complete_link, open_ticket_count, parse_link_command
 from .webhook_auth import is_authorized, token_matches
 from .webhook_service import ingest_normalized_event, normalize_event
 
@@ -20,6 +22,20 @@ CHANNEL_LOOKUP = text(
     "WHERE type = :provider AND account_id = :account_id AND status = 'connected' "
     "ORDER BY created_at DESC LIMIT 1"
 )
+
+
+def _handle_link_command(db, channel, command, event_id: str) -> dict:
+    """A staff member sent `/link CODE` to the bot: bind their chat to their account and confirm."""
+    user = complete_link(db, channel["organization_id"], channel["id"], command)
+    if user is not None:
+        text = render("link_ok", command.language, email=user.email, count=open_ticket_count(db, user))
+    else:
+        text = render("link_bad", command.language)
+    db.commit()
+    channel_row = db.get(Channel, channel["id"])
+    if channel_row is not None:
+        send_message(channel_row, command.chat_id, text)
+    return {"status": "accepted", "event_id": event_id, "command": "link", "linked": user is not None}
 
 
 @router.get("/whatsapp/{account_id}")
@@ -81,6 +97,11 @@ async def receive_webhook(
         if result.rowcount == 0:
             db.rollback()
             return {"status": "accepted", "event_id": event_id, "duplicate": True}
+
+        if provider == "telegram":
+            command = parse_link_command(payload)
+            if command is not None:
+                return _handle_link_command(db, channel, command, event_id)
 
         normalized = normalize_event(provider, payload)
         if normalized is None:

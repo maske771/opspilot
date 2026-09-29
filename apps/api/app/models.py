@@ -59,8 +59,17 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[UserRole] = mapped_column(pg_enum(UserRole, "user_role"), default=UserRole.STAFF)
     specialties: Mapped[list[str]] = mapped_column(ARRAY(String(100)), default=list, server_default="{}")
+    telegram_chat_id: Mapped[str | None] = mapped_column(Text())
+    telegram_channel_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("channels.id", ondelete="SET NULL"))
+    telegram_link_code: Mapped[str | None] = mapped_column(Text())
+    telegram_link_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    notify_language: Mapped[str] = mapped_column(Text(), default="en", server_default="en")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     __table_args__ = (UniqueConstraint("organization_id", "email", name="uq_users_org_email"),)
+
+    @property
+    def telegram_linked(self) -> bool:
+        return bool(self.telegram_chat_id and self.telegram_channel_id)
 
 
 class Property(Base):
@@ -118,6 +127,21 @@ class Ticket(Base):
     resolution_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class TicketNotification(Base):
+    """One row per (ticket, recipient, kind): the guarantee that a staff notification goes out once."""
+
+    __tablename__ = "ticket_notifications"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    ticket_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tickets.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(Text())
+    status: Mapped[str] = mapped_column(Text())  # sent | skipped (recipient not linked) | failed
+    attempts: Mapped[int] = mapped_column(default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    __table_args__ = (UniqueConstraint("ticket_id", "user_id", "kind", name="uq_ticket_notification"),)
 
 
 class Channel(Base):

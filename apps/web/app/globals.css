@@ -228,6 +228,12 @@ textarea {
 .nav-user {
   font-size: 13px;
   color: var(--nav-text-muted);
+  text-decoration: none;
+}
+
+.nav-user:hover {
+  color: var(--nav-text);
+  text-decoration: underline;
 }
 
 .topbar .seg,

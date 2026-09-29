@@ -20,6 +20,7 @@ class UserRead(BaseModel):
     email: str
     role: UserRole
     specialties: list[str]
+    telegram_linked: bool
 
 
 class UserCreate(BaseModel):
