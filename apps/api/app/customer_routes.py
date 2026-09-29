@@ -29,7 +29,7 @@ class CustomerRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
     organization_id: uuid.UUID
-    name: str
+    name: str | None
     phone: str | None
     email: str | None
 
