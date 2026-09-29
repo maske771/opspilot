@@ -132,6 +132,7 @@ export const th: Messages = {
   'ticket.resolutionDue': 'กำหนดแก้ไขเสร็จ',
   'ticket.conversation': 'การสนทนา',
   'ticket.tabDetails': 'รายละเอียด',
+  'ticket.awaitingApprovalNote': 'งานความสำคัญสูง/วิกฤตนี้ต้องให้ผู้จัดการอนุมัติก่อนปิดงาน',
 
   'properties.subtitle': 'ทรัพย์สินและยูนิตที่เชื่อมกับงาน',
   'properties.loadFailed': 'โหลดทรัพย์สินไม่สำเร็จ',

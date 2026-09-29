@@ -130,6 +130,7 @@ export const en = {
   'ticket.resolutionDue': 'Resolution due',
   'ticket.conversation': 'Conversation',
   'ticket.tabDetails': 'Details',
+  'ticket.awaitingApprovalNote': 'This high/critical ticket needs a manager to approve closure.',
 
   'properties.subtitle': 'Properties and units linked to tickets.',
   'properties.loadFailed': 'Could not load properties',

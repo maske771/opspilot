@@ -1,9 +1,11 @@
 import os
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .models import Channel, Ticket, User
 from .outbound import send_message
+from .roles import MANAGER_ROLES
 
 SUPPORTED_LANGUAGES = ("en", "ru", "th")
 
@@ -55,6 +57,11 @@ MESSAGES: dict[str, dict[str, str]] = {
         "ru": "Эскалация: срок решения просрочен на {minutes} мин. Исполнитель: {assignee}. {title}\n{url}",
         "th": "แจ้งเตือนผู้จัดการ: เกินกำหนดแก้ไขงาน {minutes} นาที ผู้รับผิดชอบ: {assignee} {title}\n{url}",
     },
+    "approval_needed": {
+        "en": "Ready to close, needs your approval ({priority}): {title}\n{url}",
+        "ru": "Готово к закрытию, нужно ваше подтверждение ({priority}): {title}\n{url}",
+        "th": "พร้อมปิดงาน ต้องรออนุมัติจากคุณ ({priority}): {title}\n{url}",
+    },
     "link_ok": {
         "en": "Telegram is now linked to {email}. You will get notifications about your tickets here. Open tickets assigned to you: {count}.",
         "ru": "Telegram привязан к {email}. Здесь вы будете получать уведомления о ваших заявках. Открытых заявок на вас: {count}.",
@@ -94,6 +101,17 @@ def ticket_message(kind: str, ticket: Ticket, language: str | None, minutes: int
         url=ticket_url(ticket),
         assignee=assignee_name,
     )
+
+
+def notify_managers_approval_needed(db: Session, ticket: Ticket) -> None:
+    """A high/critical ticket just reached waiting_approval: tell every manager once, right now
+    (not through the polling SLA monitor — this is an event, not a deadline)."""
+    managers = db.scalars(
+        select(User).where(User.organization_id == ticket.organization_id, User.role.in_(MANAGER_ROLES))
+    )
+    for manager in managers:
+        text = ticket_message("approval_needed", ticket, manager.notify_language, 0)
+        send_to_user(db, manager, text)
 
 
 def send_to_user(db: Session, user: User, text: str) -> str:

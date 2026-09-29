@@ -10,7 +10,11 @@ from .assignment import find_assignee_for_category
 from .auth import get_current_user
 from .db import get_db
 from .models import Ticket, TicketPriority, TicketStatus, User
+from .notifications import notify_managers_approval_needed
+from .roles import MANAGER_ROLES
 from .sla import calculate_sla
+
+APPROVAL_REQUIRED_PRIORITIES = (TicketPriority.HIGH, TicketPriority.CRITICAL)
 
 router = APIRouter(prefix="/tickets", tags=["tickets"])
 
@@ -192,9 +196,19 @@ def start_ticket(ticket_id: uuid.UUID, user: User = Depends(get_current_user), d
 
 @router.post("/{ticket_id}/complete", response_model=TicketRead)
 def complete_ticket(ticket_id: uuid.UUID, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Ticket:
-    return _apply_transition(ticket_id, TicketStatus.COMPLETED, user, db)
+    """High/critical tickets go to waiting_approval instead of completed — see close_ticket for the other half."""
+    needs_approval = _get_ticket(ticket_id, user, db).priority in APPROVAL_REQUIRED_PRIORITIES
+    target = TicketStatus.WAITING_APPROVAL if needs_approval else TicketStatus.COMPLETED
+    ticket = _apply_transition(ticket_id, target, user, db)
+    if needs_approval:
+        notify_managers_approval_needed(db, ticket)
+    return ticket
 
 
 @router.post("/{ticket_id}/close", response_model=TicketRead)
 def close_ticket(ticket_id: uuid.UUID, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Ticket:
+    """Closing a high/critical ticket is a manager-only action — the point of the approval step."""
+    ticket = _get_ticket(ticket_id, user, db)
+    if ticket.priority in APPROVAL_REQUIRED_PRIORITIES and user.role not in MANAGER_ROLES:
+        raise HTTPException(status_code=403, detail="Only a manager can close a high/critical ticket")
     return _apply_transition(ticket_id, TicketStatus.CLOSED, user, db)

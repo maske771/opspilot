@@ -111,3 +111,43 @@ def test_send_to_user_reports_sent_and_failed(db_session, monkeypatch):
     assert calls == [("555", "hello")]
     outcome["ok"] = False
     assert notifications.send_to_user(db_session, user, "hello") == notifications.FAILED
+
+
+def test_notify_managers_approval_needed_reaches_every_manager_in_their_language(db_session, monkeypatch):
+    from app import notifications as notif_module
+    from app.models import Organization, Ticket, TicketPriority, TicketStatus, UserRole
+
+    calls = []
+    monkeypatch.setattr(notif_module, "send_message", lambda channel, recipient, text: calls.append((recipient, text)) or True)
+
+    org = Organization(name="Org")
+    db_session.add(org)
+    db_session.flush()
+    channel = Channel(organization_id=org.id, type="telegram", account_id="a" + uuid.uuid4().hex[:8], name="Bot", status="connected", credentials={"bot_token": "x"})
+    db_session.add(channel)
+    db_session.flush()
+
+    def make(role, chat_id, lang):
+        u = User(organization_id=org.id, email=f"{role.value}-{uuid.uuid4().hex[:6]}@example.com", password_hash="h", role=role, telegram_chat_id=chat_id, telegram_channel_id=channel.id, notify_language=lang)
+        db_session.add(u)
+        return u
+
+    owner = make(UserRole.OWNER, "1", "en")
+    manager = make(UserRole.MANAGER, "2", "ru")
+    make(UserRole.STAFF, "3", "en")  # not a manager — must not be notified
+    unlinked_admin = User(organization_id=org.id, email="admin@example.com", password_hash="h", role=UserRole.ADMIN)
+    db_session.add(unlinked_admin)
+    db_session.commit()
+
+    ticket = Ticket(organization_id=org.id, title="Roof leak", description="x", priority=TicketPriority.CRITICAL, status=TicketStatus.WAITING_APPROVAL)
+    db_session.add(ticket)
+    db_session.commit()
+
+    notif_module.notify_managers_approval_needed(db_session, ticket)
+
+    recipients = {r for r, _ in calls}
+    assert recipients == {"1", "2"}
+    en_text = next(t for r, t in calls if r == "1")
+    ru_text = next(t for r, t in calls if r == "2")
+    assert "needs your approval" in en_text and "Critical" in en_text and "Roof leak" in en_text
+    assert "подтверждение" in ru_text and "Критичный" in ru_text

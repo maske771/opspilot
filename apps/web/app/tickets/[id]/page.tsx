@@ -19,7 +19,10 @@ import {
 } from '../../lib/api';
 import type { MessageKey } from '../../lib/i18n/en';
 import { useLocale } from '../../lib/locale';
+import { isManagerRole } from '../../lib/roles';
 import { PRIORITY_KEYS, STATUS_KEYS, priorityBadgeStyle, statusBadgeStyle } from '../../lib/ui';
+
+const APPROVAL_REQUIRED_PRIORITIES: TicketPriority[] = ['high', 'critical'];
 
 const AVAILABLE_ACTIONS: Record<TicketStatus, { action: string; label: MessageKey }[]> = {
   new: [
@@ -48,7 +51,7 @@ const AVAILABLE_ACTIONS: Record<TicketStatus, { action: string; label: MessageKe
 };
 
 function TicketDetail() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const { t, tOr, formatDateTime } = useLocale();
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -162,6 +165,11 @@ function TicketDetail() {
     ...(hasConversation ? [{ id: 'conversation', label: t('ticket.conversation'), count: messages.length }] : []),
   ];
 
+  // Closing a high/critical ticket is manager-only server-side; hide the button for everyone else
+  // rather than let them hit a 403.
+  const canClose = !ticket || !APPROVAL_REQUIRED_PRIORITIES.includes(ticket.priority) || isManagerRole(user?.role);
+  const availableActions = ticket ? AVAILABLE_ACTIONS[ticket.status].filter((a) => a.action !== 'close' || canClose) : [];
+
   return (
     <>
       <main className="page-narrow">
@@ -190,15 +198,18 @@ function TicketDetail() {
                 </span>
               </div>
             </div>
+            {ticket.status === 'waiting_approval' && !canClose && (
+              <p style={{ fontSize: 12.5, color: 'var(--color-accent-text)', margin: '0 0 10px' }}>{t('ticket.awaitingApprovalNote')}</p>
+            )}
             <p style={{ color: 'var(--color-text-muted)', fontSize: 13, marginBottom: 20 }}>
               {t('ticket.created', { date: formatDateTime(ticket.created_at) })}
               {customer && ` · ${customer.name}`}
               {property && ` · ${property.name}`}
             </p>
 
-            {AVAILABLE_ACTIONS[ticket.status].length > 0 && (
+            {availableActions.length > 0 && (
               <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-                {AVAILABLE_ACTIONS[ticket.status].map((a) => (
+                {availableActions.map((a) => (
                   <button key={a.action} onClick={() => runAction(a.action)} disabled={busy} className="btn btn-secondary">
                     {t(a.label)}
                   </button>

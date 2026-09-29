@@ -132,6 +132,7 @@ export const ru: Messages = {
   'ticket.resolutionDue': 'Срок решения',
   'ticket.conversation': 'Переписка',
   'ticket.tabDetails': 'Детали',
+  'ticket.awaitingApprovalNote': 'Этот тикет с высоким/критичным приоритетом требует подтверждения закрытия от менеджера.',
 
   'properties.subtitle': 'Объекты и юниты, привязанные к тикетам.',
   'properties.loadFailed': 'Не удалось загрузить объекты',

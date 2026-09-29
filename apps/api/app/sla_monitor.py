@@ -9,8 +9,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .db import SessionLocal, engine
-from .models import Ticket, TicketNotification, TicketStatus, User, UserRole
+from .models import Ticket, TicketNotification, TicketStatus, User
 from .notifications import FAILED, SENT, send_to_user, ticket_message
+from .roles import MANAGER_ROLES
 
 logger = logging.getLogger("opspilot.sla")
 
@@ -22,7 +23,6 @@ MAX_ATTEMPTS = 3
 
 RESPONSE_OPEN = {TicketStatus.NEW, TicketStatus.ASSIGNED}
 RESOLUTION_OPEN = {TicketStatus.NEW, TicketStatus.ASSIGNED, TicketStatus.ACCEPTED, TicketStatus.IN_PROGRESS}
-MANAGER_ROLES = (UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER)
 
 # (statuses the deadline applies to, deadline attribute, kinds, warn lead as a share of the window, minimum lead in minutes)
 DEADLINES = (

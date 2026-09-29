@@ -128,6 +128,12 @@ Tickets may optionally reference the originating conversation via `conversation_
 
 On creation (both `POST /tickets` and webhook-generated tickets), the auto-assignment engine looks for a `staff`/`technician` user in the organization whose `specialties` include the ticket's `category`, and picks the one with the fewest currently open (non-closed) tickets. If a match is found, the ticket is assigned and moves straight to `assigned`; otherwise it is left unassigned in `new` for manual triage.
 
+### Manager approval for high/critical closure
+
+`POST /tickets/{id}/complete` on a `high`/`critical` ticket moves it to `waiting_approval` instead of `completed` (per `docs/product-spec.md`'s "high/critical closure requires human approval"), and notifies every `owner`/`admin`/`manager` in the organization once, immediately (`notify_managers_approval_needed`, not the polling SLA monitor). `low`/`medium` tickets complete as before.
+
+`POST /tickets/{id}/close` on a `high`/`critical` ticket (in any status — a manager may also close one directly, e.g. a duplicate/spam report, without going through `complete` first) requires the caller's role to be `owner`, `admin` or `manager`; anyone else gets `403`. `low`/`medium` tickets can still be closed by anyone, unchanged.
+
 ## Staff notifications and SLA monitor
 
 Staff hear about their work through the organization's Telegram bot.
