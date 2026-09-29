@@ -13,6 +13,7 @@ export const ru: Messages = {
   'common.signOut': 'Выйти',
   'common.optional': 'необязательно',
   'common.ownerAdminOnly': 'Доступно только владельцу и админу.',
+  'common.managersOnly': 'Доступно только владельцу, админу и менеджеру.',
 
   'switcher.language': 'Язык',
   'switcher.toDark': 'Включить тёмную тему',
@@ -34,6 +35,7 @@ export const ru: Messages = {
   'nav.expand': 'Развернуть меню',
   'nav.openMenu': 'Открыть меню',
   'nav.closeMenu': 'Закрыть меню',
+  'nav.dailyReport': 'Ежедневная сводка',
 
   'auth.email': 'Email',
   'auth.password': 'Пароль',
@@ -188,6 +190,22 @@ export const ru: Messages = {
   'profile.loadFailed': 'Не удалось загрузить профиль',
   'profile.codeFailed': 'Не удалось создать код привязки',
   'profile.unlinkFailed': 'Не удалось отвязать Telegram',
+
+  'report.subtitle': 'Что произошло вчера и как дела прямо сейчас.',
+  'report.prevDay': '← Предыдущий день',
+  'report.nextDay': 'Следующий день →',
+  'report.periodLabel': 'За {date} (по времени Индокитая, 00:00–24:00).',
+  'report.created': 'Создано',
+  'report.closed': 'Закрыто',
+  'report.currentlyOpen': 'Открыто сейчас',
+  'report.currentlyOverdue': 'Просрочено сейчас',
+  'report.waitingApproval': 'Ждёт подтверждения',
+  'report.createdByPriority': 'Новые заявки по приоритету',
+  'report.createdByCategory': 'Новые заявки по категории',
+  'report.noneCreated': 'В этот день заявок не было.',
+  'report.openCriticalHigh': 'Открытые high/critical заявки',
+  'report.noOpenCriticalHigh': 'Сейчас нет открытых high/critical заявок.',
+  'report.loadFailed': 'Не удалось загрузить сводку',
 
   'channels.subtitle': 'Каналы, через которые клиенты пишут в OpsPilot. После подключения укажите URL вебхука в настройках провайдера. В URL вшит секретный токен — обращайтесь с ним как с паролем.',
   'channels.rotateToken': 'Обновить токен',

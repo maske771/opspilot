@@ -169,6 +169,12 @@ GET /dashboard/summary
 
 `/dashboard/summary` returns tenant-scoped totals for tickets, open tickets, overdue tickets, customers, properties and units, plus complete ticket breakdowns by status and priority. Open tickets are `new`, `assigned`, `accepted`, `in_progress`, and `waiting_approval`. Overdue means a non-closed ticket whose resolution deadline has passed.
 
+```text
+GET /reports/daily?date=YYYY-MM-DD
+```
+
+`/reports/daily` — the "daily operations summary" from `docs/product-spec.md` (MVP workflow step 13), `owner`/`admin`/`manager` only (`403` otherwise). `date` is optional and defaults to yesterday; both default and explicit dates are read as a calendar day in Indochina Time (UTC+7 — organizations have no timezone setting yet, and the initial ICP is Thailand-focused). Returns: tickets created that day (total + by priority + by category), tickets closed that day (via `Ticket.closed_at`, stamped whenever a ticket transitions to `closed`), and a *current* snapshot (not scoped to the report day) of open/overdue/waiting-approval counts plus the list of currently open `high`/`critical` tickets with assignee and an `overdue` flag.
+
 Planned next:
 
 ```text

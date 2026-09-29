@@ -163,3 +163,26 @@ export type DashboardSummary = {
   tickets_by_status: { status: TicketStatus; count: number }[];
   tickets_by_priority: { priority: TicketPriority; count: number }[];
 };
+
+export type DailyReport = {
+  date: string;
+  period_start: string;
+  period_end: string;
+  tickets_created: number;
+  tickets_created_by_priority: { priority: TicketPriority; count: number }[];
+  tickets_created_by_category: { category: string; count: number }[];
+  tickets_closed: number;
+  currently_open: number;
+  currently_overdue: number;
+  currently_waiting_approval: number;
+  open_critical_high: {
+    id: string;
+    title: string;
+    category: string;
+    priority: TicketPriority;
+    status: TicketStatus;
+    assignee_email: string | null;
+    created_at: string;
+    overdue: boolean;
+  }[];
+};

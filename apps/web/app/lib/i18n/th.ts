@@ -13,6 +13,7 @@ export const th: Messages = {
   'common.signOut': 'ออกจากระบบ',
   'common.optional': 'ไม่บังคับ',
   'common.ownerAdminOnly': 'เฉพาะเจ้าของและผู้ดูแลระบบเท่านั้น',
+  'common.managersOnly': 'เฉพาะเจ้าของ ผู้ดูแลระบบ และผู้จัดการเท่านั้น',
 
   'switcher.language': 'ภาษา',
   'switcher.toDark': 'เปลี่ยนเป็นธีมมืด',
@@ -34,6 +35,7 @@ export const th: Messages = {
   'nav.expand': 'ขยายเมนู',
   'nav.openMenu': 'เปิดเมนู',
   'nav.closeMenu': 'ปิดเมนู',
+  'nav.dailyReport': 'สรุปประจำวัน',
 
   'auth.email': 'อีเมล',
   'auth.password': 'รหัสผ่าน',
@@ -188,6 +190,22 @@ export const th: Messages = {
   'profile.loadFailed': 'โหลดโปรไฟล์ไม่สำเร็จ',
   'profile.codeFailed': 'สร้างรหัสเชื่อมต่อไม่สำเร็จ',
   'profile.unlinkFailed': 'ยกเลิกการเชื่อมต่อ Telegram ไม่สำเร็จ',
+
+  'report.subtitle': 'สิ่งที่เกิดขึ้นเมื่อวานและสถานะตอนนี้',
+  'report.prevDay': '← วันก่อนหน้า',
+  'report.nextDay': 'วันถัดไป →',
+  'report.periodLabel': 'ข้อมูลของวันที่ {date} (เวลาอินโดจีน 00:00–24:00)',
+  'report.created': 'สร้างใหม่',
+  'report.closed': 'ปิดแล้ว',
+  'report.currentlyOpen': 'เปิดอยู่ตอนนี้',
+  'report.currentlyOverdue': 'เกินกำหนดตอนนี้',
+  'report.waitingApproval': 'รอการอนุมัติ',
+  'report.createdByPriority': 'งานใหม่ตามความสำคัญ',
+  'report.createdByCategory': 'งานใหม่ตามหมวดหมู่',
+  'report.noneCreated': 'ไม่มีงานในวันนั้น',
+  'report.openCriticalHigh': 'งานความสำคัญสูง/วิกฤตที่ยังเปิดอยู่',
+  'report.noOpenCriticalHigh': 'ตอนนี้ไม่มีงานความสำคัญสูง/วิกฤตที่เปิดอยู่',
+  'report.loadFailed': 'โหลดสรุปไม่สำเร็จ',
 
   'channels.subtitle': 'ช่องทางที่ลูกค้าใช้ติดต่อ OpsPilot หลังจากเชื่อมต่อแล้ว ให้ตั้งค่า URL ของ webhook ในการตั้งค่าของผู้ให้บริการ URL นี้มีโทเค็นลับ ควรเก็บเป็นความลับเหมือนรหัสผ่าน',
   'channels.rotateToken': 'เปลี่ยนโทเค็น',

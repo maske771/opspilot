@@ -11,6 +11,7 @@ export const en = {
   'common.signOut': 'Sign out',
   'common.optional': 'optional',
   'common.ownerAdminOnly': 'Available to the owner and admins only.',
+  'common.managersOnly': 'Available to the owner, admins and managers only.',
 
   'switcher.language': 'Language',
   'switcher.toDark': 'Switch to dark theme',
@@ -32,6 +33,7 @@ export const en = {
   'nav.expand': 'Expand menu',
   'nav.openMenu': 'Open menu',
   'nav.closeMenu': 'Close menu',
+  'nav.dailyReport': 'Daily report',
 
   'auth.email': 'Email',
   'auth.password': 'Password',
@@ -186,6 +188,22 @@ export const en = {
   'profile.loadFailed': 'Could not load the profile',
   'profile.codeFailed': 'Could not create a link code',
   'profile.unlinkFailed': 'Could not unlink Telegram',
+
+  'report.subtitle': "Yesterday's activity and where things stand right now.",
+  'report.prevDay': '← Previous day',
+  'report.nextDay': 'Next day →',
+  'report.periodLabel': 'Covers {date} (Indochina Time, 00:00–24:00).',
+  'report.created': 'Created',
+  'report.closed': 'Closed',
+  'report.currentlyOpen': 'Currently open',
+  'report.currentlyOverdue': 'Currently overdue',
+  'report.waitingApproval': 'Awaiting approval',
+  'report.createdByPriority': 'New requests by priority',
+  'report.createdByCategory': 'New requests by category',
+  'report.noneCreated': 'No requests that day.',
+  'report.openCriticalHigh': 'Open high/critical requests',
+  'report.noOpenCriticalHigh': 'No open high/critical requests right now.',
+  'report.loadFailed': 'Could not load the report',
 
   'channels.subtitle': 'Channels your customers use to reach OpsPilot. After connecting, set the webhook URL in your provider’s settings. The URL contains a secret token — treat it like a password.',
   'channels.rotateToken': 'Rotate token',

@@ -34,6 +34,20 @@ def test_valid_ticket_transitions(current: TicketStatus, target: TicketStatus) -
     assert ticket.status == target
 
 
+def test_closing_a_ticket_stamps_closed_at() -> None:
+    ticket = make_ticket(TicketStatus.COMPLETED)
+    assert ticket.closed_at is None
+    before = datetime.now(timezone.utc)
+    _transition(ticket, TicketStatus.CLOSED)
+    assert ticket.closed_at is not None and ticket.closed_at >= before
+
+
+def test_non_closing_transitions_leave_closed_at_alone() -> None:
+    ticket = make_ticket(TicketStatus.NEW)
+    _transition(ticket, TicketStatus.ASSIGNED)
+    assert ticket.closed_at is None
+
+
 def test_invalid_ticket_transition() -> None:
     ticket = make_ticket(TicketStatus.CLOSED)
     with pytest.raises(Exception, match="Invalid ticket transition"):

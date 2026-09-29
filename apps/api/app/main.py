@@ -23,6 +23,7 @@ from .ai_routes import router as ai_router
 from .log_redaction import RedactingFormatter, RedactTokenFilter
 from .observability import instrumentator, router as observability_router
 from .profile_routes import router as profile_router
+from .report_routes import router as report_router
 from .sla_monitor import monitor_enabled, run_forever as run_sla_monitor
 from .telegram_webhook import register_all_telegram_webhooks
 
@@ -80,6 +81,7 @@ app.include_router(customers_router)
 app.include_router(properties_router)
 app.include_router(units_router)
 app.include_router(dashboard_router)
+app.include_router(report_router)
 app.include_router(channel_router)
 app.include_router(conversation_router)
 app.include_router(inbox_router)

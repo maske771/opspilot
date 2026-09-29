@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from .auth import get_current_user
 from .db import get_db
 from .models import Customer, Property, Ticket, TicketPriority, TicketStatus, Unit, User
+from .tickets import OPEN_STATUSES
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -39,13 +40,6 @@ def dashboard_summary(
     db: Session = Depends(get_db),
 ) -> DashboardSummary:
     org_id = user.organization_id
-    open_statuses = {
-        TicketStatus.NEW,
-        TicketStatus.ASSIGNED,
-        TicketStatus.ACCEPTED,
-        TicketStatus.IN_PROGRESS,
-        TicketStatus.WAITING_APPROVAL,
-    }
     now = datetime.now(timezone.utc)
 
     tickets_total = db.scalar(
@@ -54,7 +48,7 @@ def dashboard_summary(
     tickets_open = db.scalar(
         select(func.count(Ticket.id)).where(
             Ticket.organization_id == org_id,
-            Ticket.status.in_(open_statuses),
+            Ticket.status.in_(OPEN_STATUSES),
         )
     ) or 0
     tickets_overdue = db.scalar(

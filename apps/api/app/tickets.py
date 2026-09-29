@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
@@ -15,6 +15,13 @@ from .roles import MANAGER_ROLES
 from .sla import calculate_sla
 
 APPROVAL_REQUIRED_PRIORITIES = (TicketPriority.HIGH, TicketPriority.CRITICAL)
+OPEN_STATUSES = (
+    TicketStatus.NEW,
+    TicketStatus.ASSIGNED,
+    TicketStatus.ACCEPTED,
+    TicketStatus.IN_PROGRESS,
+    TicketStatus.WAITING_APPROVAL,
+)
 
 router = APIRouter(prefix="/tickets", tags=["tickets"])
 
@@ -61,6 +68,7 @@ class TicketRead(BaseModel):
     resolution_deadline: datetime | None
     created_at: datetime
     updated_at: datetime
+    closed_at: datetime | None
 
 
 def _get_ticket(ticket_id: uuid.UUID, user: User, db: Session) -> Ticket:
@@ -89,6 +97,8 @@ def _transition(ticket: Ticket, target: TicketStatus) -> None:
     if target not in allowed[ticket.status]:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Invalid ticket transition: {ticket.status.value} -> {target.value}")
     ticket.status = target
+    if target == TicketStatus.CLOSED:
+        ticket.closed_at = datetime.now(timezone.utc)
 
 
 @router.get("", response_model=list[TicketRead])
