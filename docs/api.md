@@ -26,6 +26,8 @@ All user and organization operations are tenant-scoped. Owner/admin permissions 
 
 `specialties` is a list of ticket category strings (e.g. `plumbing`, `hvac`, `electrical`) a staff/technician user can be assigned. Used by the ticket auto-assignment engine below.
 
+`PATCH /organization` accepts a partial body (`name`, `onboarding_completed`) — omitted fields are left unchanged. `onboarding_completed` defaults to `false` on a new organization and gates the web app's `/onboarding` setup wizard (owner/admin only): a walkthrough of company name, connecting a channel, adding a property, inviting a teammate, reviewing the recommended SLA (`GET /sla/defaults`, read-only), sending a test request, and marking the organization live. Visiting `/onboarding` once `onboarding_completed` is `true` redirects to the dashboard. CSV/XLSX property import from `product-spec.md`'s onboarding flow is not implemented — deferred, properties are added one at a time.
+
 ## Properties / units
 
 ```text
@@ -68,6 +70,14 @@ POST /channels/{id}/register-webhook
 ```
 
 Supported channel types in the MVP are `line`, `whatsapp`, `telegram`, and `email`. Connect/disconnect/configuration operations require `owner` or `admin`. All reads and mutations are organization-scoped.
+
+`POST /channels/telegram/connect`'s response carries `bot_username` (best-effort, via Telegram's `getMe`) so the caller can build a `t.me/<username>` deep link right after connecting; it's `null` for non-telegram channels and not otherwise persisted or returned by `GET /channels`.
+
+```text
+GET /sla/defaults
+```
+
+`/sla/defaults` returns the built-in response/resolution SLA targets per priority (`sla.SLA_MINUTES`) — read-only, any authenticated user. There is no per-organization SLA override yet; that's tracked as a future Settings-screen item.
 
 Every channel has a random `webhook_token`. It authenticates inbound webhooks, so it is returned only to `owner`/`admin` (other roles see `null`). `rotate-webhook-token` replaces it (the old webhook URL stops working at once). `register-webhook` (Telegram only) points the bot's webhook at the channel; this also happens automatically on connect, on credential/status changes, on token rotation and at API start. It needs `PUBLIC_API_URL` (e.g. `https://api.example.com`) to be set on the server.
 

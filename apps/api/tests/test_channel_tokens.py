@@ -10,6 +10,7 @@ from app.models import Channel, Organization, User, UserRole
 def registered(monkeypatch):
     calls = []
     monkeypatch.setattr(channel_routes, "register_telegram_webhook", lambda channel: calls.append(channel.id) or True)
+    monkeypatch.setattr(channel_routes, "bot_username", lambda channel: "opspilot_bot")
     return calls
 
 
@@ -32,6 +33,15 @@ def test_connect_issues_a_fresh_random_token_per_channel(db_session, registered)
     assert len(first.webhook_token) >= 32
     assert first.webhook_token != second.webhook_token
     assert registered == [first.id]
+
+
+def test_connecting_telegram_returns_the_bots_username_for_a_deep_link(db_session, registered):
+    owner = make_user(db_session, UserRole.OWNER)
+    telegram = connect_channel("telegram", ChannelConnect(account_id="a1", name="One", credentials={"bot_token": "x"}), user=owner, db=db_session)
+    line = connect_channel("line", ChannelConnect(account_id="a2", name="Two"), user=owner, db=db_session)
+
+    assert telegram.bot_username == "opspilot_bot"
+    assert line.bot_username is None
 
 
 def test_only_owner_and_admin_can_see_the_token(db_session, registered):

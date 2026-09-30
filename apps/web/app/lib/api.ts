@@ -127,6 +127,7 @@ export type ChannelRead = {
   has_credentials: boolean;
   webhook_token: string | null;
   created_at: string;
+  bot_username?: string | null;
 };
 
 export type AttachmentRead = {
@@ -191,4 +192,16 @@ export type DailyReportSettings = {
   daily_report_enabled: boolean;
   daily_report_time: string;
   daily_report_timezone: string;
+};
+
+export type OrganizationRead = {
+  id: string;
+  name: string;
+  onboarding_completed: boolean;
+};
+
+export type SlaDefault = {
+  priority: TicketPriority;
+  response_minutes: number;
+  resolution_minutes: number;
 };

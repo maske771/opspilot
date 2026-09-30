@@ -26,6 +26,7 @@ from .observability import instrumentator, router as observability_router
 from .profile_routes import router as profile_router
 from .report_routes import router as report_router
 from .sla_monitor import monitor_enabled, run_forever as run_sla_monitor
+from .sla_routes import router as sla_router
 from .telegram_webhook import register_all_telegram_webhooks
 
 logger = logging.getLogger("opspilot.startup")
@@ -85,6 +86,7 @@ app.include_router(properties_router)
 app.include_router(units_router)
 app.include_router(dashboard_router)
 app.include_router(report_router)
+app.include_router(sla_router)
 app.include_router(channel_router)
 app.include_router(conversation_router)
 app.include_router(inbox_router)

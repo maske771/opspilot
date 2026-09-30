@@ -15,10 +15,12 @@ class OrganizationRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
     name: str
+    onboarding_completed: bool
 
 
 class OrganizationUpdate(BaseModel):
-    name: str = Field(min_length=1, max_length=255)
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    onboarding_completed: bool | None = None
 
 
 @router.get("", response_model=OrganizationRead)
@@ -38,9 +40,13 @@ def update_organization(
     organization = db.get(Organization, user.organization_id)
     if organization is None:
         raise HTTPException(404, "Organization not found")
-    organization.name = payload.name.strip()
-    if not organization.name:
-        raise HTTPException(422, "Organization name cannot be empty")
+    changes = payload.model_dump(exclude_unset=True)
+    if "name" in changes:
+        changes["name"] = changes["name"].strip()
+        if not changes["name"]:
+            raise HTTPException(422, "Organization name cannot be empty")
+    for field, value in changes.items():
+        setattr(organization, field, value)
     db.commit()
     db.refresh(organization)
     return organization

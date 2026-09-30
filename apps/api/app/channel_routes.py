@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from .auth import get_current_user, require_roles
 from .db import get_db
 from .models import Channel, User, UserRole, new_webhook_token
-from .telegram_webhook import register_telegram_webhook, webhook_url
+from .telegram_webhook import bot_username, register_telegram_webhook, webhook_url
 
 router = APIRouter(prefix="/channels", tags=["channels"])
 SUPPORTED_CHANNELS = {"line", "whatsapp", "telegram", "email"}
@@ -27,6 +27,7 @@ class ChannelRead(BaseModel):
     has_credentials: bool
     webhook_token: str | None = None
     created_at: datetime
+    bot_username: str | None = None  # telegram only, set right after connecting so the UI can offer a t.me deep link
 
 
 class ChannelConnect(BaseModel):
@@ -81,9 +82,11 @@ def connect_channel(channel_type: str, payload: ChannelConnect, user: User = Dep
     db.add(channel)
     db.commit()
     db.refresh(channel)
+    result = visible_channel(channel, user)
     if channel.type == "telegram":
         register_telegram_webhook(channel)
-    return channel
+        result.bot_username = bot_username(channel)
+    return result
 
 
 @router.post("/{channel_type}/disconnect", response_model=ChannelRead)

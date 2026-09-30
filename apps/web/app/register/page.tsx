@@ -27,7 +27,7 @@ export default function RegisterPage() {
         body: { organization_name: organizationName, email, password },
       });
       await login(email, password);
-      router.push('/');
+      router.push('/onboarding');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('auth.registerFailed'));
     } finally {

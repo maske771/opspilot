@@ -52,6 +52,7 @@ class Organization(Base):
     daily_report_time: Mapped[str] = mapped_column(Text(), default="08:00", server_default="08:00")
     daily_report_timezone: Mapped[str] = mapped_column(Text(), default="Asia/Bangkok", server_default="Asia/Bangkok")
     daily_report_last_sent_date: Mapped[date | None] = mapped_column(Date())
+    onboarding_completed: Mapped[bool] = mapped_column(default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
