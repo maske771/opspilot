@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .attachment_routes import router as attachment_router
 from .auth_routes import router as auth_router
+from .daily_report_scheduler import run_forever as run_daily_report_scheduler, scheduler_enabled as daily_report_scheduler_enabled
 from .organization_routes import router as organization_router
 from .tickets import router as tickets_router
 from .customer_routes import router as customers_router
@@ -56,6 +57,8 @@ async def lifespan(_: FastAPI):
     tasks = [asyncio.create_task(_register_telegram_webhooks())]
     if monitor_enabled():
         tasks.append(asyncio.create_task(run_sla_monitor()))
+    if daily_report_scheduler_enabled():
+        tasks.append(asyncio.create_task(run_daily_report_scheduler()))
     yield
     for task in tasks:
         task.cancel()

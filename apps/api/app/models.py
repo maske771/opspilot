@@ -1,9 +1,9 @@
 import enum
 import secrets
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import ARRAY, DateTime, Enum, ForeignKey, String, Text, UniqueConstraint, func, text
+from sqlalchemy import ARRAY, Date, DateTime, Enum, ForeignKey, String, Text, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -48,6 +48,10 @@ class Organization(Base):
     __tablename__ = "organizations"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(255))
+    daily_report_enabled: Mapped[bool] = mapped_column(default=False, server_default="false")
+    daily_report_time: Mapped[str] = mapped_column(Text(), default="08:00", server_default="08:00")
+    daily_report_timezone: Mapped[str] = mapped_column(Text(), default="Asia/Bangkok", server_default="Asia/Bangkok")
+    daily_report_last_sent_date: Mapped[date | None] = mapped_column(Date())
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

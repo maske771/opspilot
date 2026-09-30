@@ -186,3 +186,9 @@ export type DailyReport = {
     overdue: boolean;
   }[];
 };
+
+export type DailyReportSettings = {
+  daily_report_enabled: boolean;
+  daily_report_time: string;
+  daily_report_timezone: string;
+};

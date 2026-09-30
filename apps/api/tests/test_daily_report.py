@@ -1,13 +1,20 @@
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date as date_type, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi import HTTPException
 
 from app.models import Organization, Ticket, TicketPriority, TicketStatus, User, UserRole
-from app.report_routes import REPORT_TZ, daily_report
+from app.report_routes import (
+    DailyReportSettingsUpdate,
+    daily_report,
+    get_daily_report_settings,
+    org_timezone,
+    update_daily_report_settings,
+)
 
-ICT_MIDNIGHT_UTC = timedelta(hours=7)  # 00:00 ICT == 17:00 UTC the previous day
+BANGKOK = ZoneInfo("Asia/Bangkok")
 
 
 def make_org(db_session):
@@ -33,6 +40,8 @@ def make_ticket(db_session, org, **overrides):
     return ticket
 
 
+# ---- viewing the report
+
 def test_only_managers_can_view_the_report(db_session):
     org = make_org(db_session)
     for role in (UserRole.STAFF, UserRole.TECHNICIAN):
@@ -43,26 +52,41 @@ def test_only_managers_can_view_the_report(db_session):
         daily_report(report_date=None, user=make_user(db_session, org, role), db=db_session)  # must not raise
 
 
-def test_default_date_is_yesterday_in_indochina_time(db_session):
+def test_organizations_default_to_bangkok_time(db_session):
+    org = make_org(db_session)
+    assert org.daily_report_timezone == "Asia/Bangkok"
+    assert org_timezone(org) == BANGKOK
+
+
+def test_default_date_is_yesterday_in_the_orgs_timezone(db_session):
     org = make_org(db_session)
     owner = make_user(db_session, org, UserRole.OWNER)
-    expected = (datetime.now(REPORT_TZ) - timedelta(days=1)).date()
+    expected = (datetime.now(BANGKOK) - timedelta(days=1)).date()
 
     result = daily_report(report_date=None, user=owner, db=db_session)
 
     assert result.date == expected
 
 
-def test_period_bounds_match_the_ict_calendar_day(db_session):
+def test_period_bounds_match_the_orgs_calendar_day(db_session):
     org = make_org(db_session)
     owner = make_user(db_session, org, UserRole.OWNER)
-    from datetime import date as date_type
-    day = date_type(2026, 6, 15)
 
-    result = daily_report(report_date=day, user=owner, db=db_session)
+    result = daily_report(report_date=date_type(2026, 6, 15), user=owner, db=db_session)
 
-    assert result.period_start == datetime(2026, 6, 14, 17, 0, tzinfo=timezone.utc)  # 2026-06-15 00:00 ICT
+    assert result.period_start == datetime(2026, 6, 14, 17, 0, tzinfo=timezone.utc)  # 2026-06-15 00:00 Bangkok
     assert result.period_end == datetime(2026, 6, 15, 17, 0, tzinfo=timezone.utc)
+
+
+def test_a_moscow_org_gets_moscow_day_bounds(db_session):
+    org = make_org(db_session)
+    org.daily_report_timezone = "Europe/Moscow"
+    db_session.commit()
+    owner = make_user(db_session, org, UserRole.OWNER)
+
+    result = daily_report(report_date=date_type(2026, 6, 15), user=owner, db=db_session)
+
+    assert result.period_start == datetime(2026, 6, 14, 21, 0, tzinfo=timezone.utc)  # 2026-06-15 00:00 MSK (UTC+3)
 
 
 def test_counts_only_tickets_created_inside_the_day(db_session):
@@ -70,12 +94,11 @@ def test_counts_only_tickets_created_inside_the_day(db_session):
     owner = make_user(db_session, org, UserRole.OWNER)
     period_start = datetime(2026, 6, 14, 17, 0, tzinfo=timezone.utc)
 
-    make_ticket(db_session, org, created_at=period_start, priority=TicketPriority.HIGH, category="hvac")  # in (inclusive start)
+    make_ticket(db_session, org, created_at=period_start, priority=TicketPriority.HIGH, category="hvac")
     make_ticket(db_session, org, created_at=period_start + timedelta(hours=12), priority=TicketPriority.LOW, category="other")
-    make_ticket(db_session, org, created_at=period_start - timedelta(seconds=1))  # just before, excluded
-    make_ticket(db_session, org, created_at=period_start + timedelta(days=1))  # next day, excluded
+    make_ticket(db_session, org, created_at=period_start - timedelta(seconds=1))
+    make_ticket(db_session, org, created_at=period_start + timedelta(days=1))
 
-    from datetime import date as date_type
     result = daily_report(report_date=date_type(2026, 6, 15), user=owner, db=db_session)
 
     assert result.tickets_created == 2
@@ -91,10 +114,9 @@ def test_counts_only_tickets_closed_inside_the_day(db_session):
     period_start = datetime(2026, 6, 14, 17, 0, tzinfo=timezone.utc)
 
     make_ticket(db_session, org, status=TicketStatus.CLOSED, closed_at=period_start + timedelta(hours=3))
-    make_ticket(db_session, org, status=TicketStatus.CLOSED, closed_at=period_start - timedelta(minutes=1))  # day before
+    make_ticket(db_session, org, status=TicketStatus.CLOSED, closed_at=period_start - timedelta(minutes=1))
     make_ticket(db_session, org, status=TicketStatus.NEW, closed_at=None)
 
-    from datetime import date as date_type
     result = daily_report(report_date=date_type(2026, 6, 15), user=owner, db=db_session)
 
     assert result.tickets_closed == 1
@@ -111,7 +133,7 @@ def test_current_snapshot_counts_are_not_scoped_to_the_report_day(db_session):
 
     result = daily_report(report_date=None, user=owner, db=db_session)
 
-    assert result.currently_open == 2  # in_progress + waiting_approval; closed excluded
+    assert result.currently_open == 2
     assert result.currently_overdue == 1
     assert result.currently_waiting_approval == 1
 
@@ -124,8 +146,8 @@ def test_open_critical_high_lists_only_open_high_priority_with_assignee_and_over
 
     overdue_critical = make_ticket(db_session, org, priority=TicketPriority.CRITICAL, status=TicketStatus.IN_PROGRESS, assignee_id=tech.id, resolution_deadline=now - timedelta(hours=2))
     on_track_high = make_ticket(db_session, org, priority=TicketPriority.HIGH, status=TicketStatus.ASSIGNED, resolution_deadline=now + timedelta(hours=5))
-    make_ticket(db_session, org, priority=TicketPriority.MEDIUM, status=TicketStatus.ASSIGNED)  # not high/critical
-    make_ticket(db_session, org, priority=TicketPriority.CRITICAL, status=TicketStatus.CLOSED, closed_at=now)  # closed, excluded
+    make_ticket(db_session, org, priority=TicketPriority.MEDIUM, status=TicketStatus.ASSIGNED)
+    make_ticket(db_session, org, priority=TicketPriority.CRITICAL, status=TicketStatus.CLOSED, closed_at=now)
 
     result = daily_report(report_date=None, user=owner, db=db_session)
 
@@ -144,3 +166,64 @@ def test_report_is_scoped_to_the_callers_organization(db_session):
     result = daily_report(report_date=None, user=owner, db=db_session)
 
     assert result.currently_open == 0 and result.open_critical_high == []
+
+
+# ---- delivery settings
+
+def test_settings_default_to_disabled_with_sensible_defaults(db_session):
+    org = make_org(db_session)
+    owner = make_user(db_session, org, UserRole.OWNER)
+
+    result = get_daily_report_settings(user=owner, db=db_session)
+
+    assert result.daily_report_enabled is False
+    assert result.daily_report_time == "08:00"
+    assert result.daily_report_timezone == "Asia/Bangkok"
+
+
+def test_only_owner_and_admin_can_read_or_change_settings(db_session):
+    org = make_org(db_session)
+    for role in (UserRole.MANAGER, UserRole.STAFF, UserRole.TECHNICIAN):
+        user = make_user(db_session, org, role)
+        with pytest.raises(HTTPException) as exc:
+            get_daily_report_settings(user=user, db=db_session)
+        assert exc.value.status_code == 403
+        with pytest.raises(HTTPException):
+            update_daily_report_settings(DailyReportSettingsUpdate(daily_report_enabled=True), user=user, db=db_session)
+
+
+def test_updating_settings_persists_the_change(db_session):
+    org = make_org(db_session)
+    owner = make_user(db_session, org, UserRole.OWNER)
+
+    result = update_daily_report_settings(
+        DailyReportSettingsUpdate(daily_report_enabled=True, daily_report_time="09:30", daily_report_timezone="Europe/Moscow"),
+        user=owner,
+        db=db_session,
+    )
+
+    assert (result.daily_report_enabled, result.daily_report_time, result.daily_report_timezone) == (True, "09:30", "Europe/Moscow")
+    db_session.refresh(org)
+    assert org.daily_report_enabled is True and org.daily_report_time == "09:30"
+
+
+def test_partial_update_only_touches_the_given_fields(db_session):
+    org = make_org(db_session)
+    owner = make_user(db_session, org, UserRole.OWNER)
+    update_daily_report_settings(DailyReportSettingsUpdate(daily_report_enabled=True, daily_report_time="07:00"), user=owner, db=db_session)
+
+    result = update_daily_report_settings(DailyReportSettingsUpdate(daily_report_time="10:15"), user=owner, db=db_session)
+
+    assert result.daily_report_enabled is True  # untouched
+    assert result.daily_report_time == "10:15"
+
+
+@pytest.mark.parametrize("bad_time", ["9:00", "24:00", "12:60", "noon", ""])
+def test_invalid_time_format_is_rejected(bad_time):
+    with pytest.raises(Exception):
+        DailyReportSettingsUpdate(daily_report_time=bad_time)
+
+
+def test_unknown_timezone_is_rejected():
+    with pytest.raises(Exception):
+        DailyReportSettingsUpdate(daily_report_timezone="Mars/OlympusMons")

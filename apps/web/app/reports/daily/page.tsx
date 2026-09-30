@@ -3,10 +3,124 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { RequireAuth, useAuth } from '../../lib/auth';
-import { apiFetch, type DailyReport } from '../../lib/api';
+import { apiFetch, ApiError, type DailyReport, type DailyReportSettings } from '../../lib/api';
 import { useLocale } from '../../lib/locale';
-import { isManagerRole } from '../../lib/roles';
+import { isAdminRole, isManagerRole } from '../../lib/roles';
 import { PRIORITY_KEYS, STATUS_KEYS, priorityBadgeStyle, statusBadgeStyle } from '../../lib/ui';
+
+// Must match ALLOWED_TIMEZONES in apps/api/app/report_routes.py.
+const ALLOWED_TIMEZONES = [
+  'Asia/Bangkok',
+  'Asia/Ho_Chi_Minh',
+  'Asia/Singapore',
+  'Asia/Jakarta',
+  'Asia/Manila',
+  'Asia/Hong_Kong',
+  'Asia/Shanghai',
+  'Asia/Tokyo',
+  'Asia/Kolkata',
+  'Asia/Dubai',
+  'Europe/Moscow',
+  'Europe/London',
+  'Europe/Berlin',
+  'UTC',
+  'America/New_York',
+  'America/Los_Angeles',
+];
+
+function DeliverySettings() {
+  const { token } = useAuth();
+  const { t } = useLocale();
+  const [settings, setSettings] = useState<DailyReportSettings | null>(null);
+  const [enabled, setEnabled] = useState(false);
+  const [time, setTime] = useState('08:00');
+  const [tz, setTz] = useState('Asia/Bangkok');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!token) return;
+    apiFetch<DailyReportSettings>('/reports/daily/settings', { token })
+      .then((s) => {
+        setSettings(s);
+        setEnabled(s.daily_report_enabled);
+        setTime(s.daily_report_time);
+        setTz(s.daily_report_timezone);
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : t('report.settingsLoadFailed')));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  async function save() {
+    if (!token) return;
+    setSaving(true);
+    setSaved(false);
+    setError(null);
+    try {
+      const updated = await apiFetch<DailyReportSettings>('/reports/daily/settings', {
+        method: 'PATCH',
+        token,
+        body: { daily_report_enabled: enabled, daily_report_time: time, daily_report_timezone: tz },
+      });
+      setSettings(updated);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('report.settingsSaveFailed'));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!settings) return null;
+
+  const dirty = enabled !== settings.daily_report_enabled || time !== settings.daily_report_time || tz !== settings.daily_report_timezone;
+
+  return (
+    <div className="card card-pad" style={{ marginBottom: 24 }}>
+      <h2 style={{ fontSize: 15, marginTop: 0, marginBottom: 4 }}>{t('report.settingsTitle')}</h2>
+      <p style={{ fontSize: 12.5, color: 'var(--color-text-subtle)', marginTop: 0, marginBottom: 16 }}>{t('report.settingsHint')}</p>
+
+      {error && (
+        <div style={{ padding: 12, borderRadius: 10, background: 'var(--color-danger-soft)', color: 'var(--color-danger)', marginBottom: 14, fontSize: 13 }}>
+          {error}
+        </div>
+      )}
+
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, marginBottom: 14, cursor: 'pointer' }}>
+        <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+        {t('report.settingsEnable')}
+      </label>
+
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'end', marginBottom: 16 }}>
+        <div>
+          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 6 }}>{t('report.settingsTime')}</div>
+          <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="input" style={{ width: 130 }} disabled={!enabled} />
+        </div>
+        <div>
+          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 6 }}>{t('report.settingsTimezone')}</div>
+          <select value={tz} onChange={(e) => setTz(e.target.value)} className="select" style={{ minWidth: 200 }} disabled={!enabled}>
+            {ALLOWED_TIMEZONES.map((zone) => (
+              <option key={zone} value={zone}>
+                {zone}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button type="button" className="btn btn-primary" onClick={save} disabled={saving || !dirty}>
+          {t('report.settingsSave')}
+        </button>
+      </div>
+
+      {saved && (
+        <div style={{ padding: 10, borderRadius: 10, background: 'var(--status-completed-bg)', color: 'var(--status-completed-text)', fontSize: 13 }}>
+          {t('report.settingsSaved')}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function shiftDate(iso: string, days: number): string {
   const d = new Date(iso + 'T00:00:00Z');
@@ -56,6 +170,8 @@ function ReportView() {
     <main className="page">
       <h1 className="page-title">{t('nav.dailyReport')}</h1>
       <p className="page-subtitle">{t('report.subtitle')}</p>
+
+      {isAdminRole(user?.role) && <DeliverySettings />}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
         <button type="button" className="btn btn-secondary" onClick={() => setDate((d) => shiftDate(d, -1))}>

@@ -170,10 +170,16 @@ GET /dashboard/summary
 `/dashboard/summary` returns tenant-scoped totals for tickets, open tickets, overdue tickets, customers, properties and units, plus complete ticket breakdowns by status and priority. Open tickets are `new`, `assigned`, `accepted`, `in_progress`, and `waiting_approval`. Overdue means a non-closed ticket whose resolution deadline has passed.
 
 ```text
-GET /reports/daily?date=YYYY-MM-DD
+GET   /reports/daily?date=YYYY-MM-DD
+GET   /reports/daily/settings
+PATCH /reports/daily/settings
 ```
 
-`/reports/daily` — the "daily operations summary" from `docs/product-spec.md` (MVP workflow step 13), `owner`/`admin`/`manager` only (`403` otherwise). `date` is optional and defaults to yesterday; both default and explicit dates are read as a calendar day in Indochina Time (UTC+7 — organizations have no timezone setting yet, and the initial ICP is Thailand-focused). Returns: tickets created that day (total + by priority + by category), tickets closed that day (via `Ticket.closed_at`, stamped whenever a ticket transitions to `closed`), and a *current* snapshot (not scoped to the report day) of open/overdue/waiting-approval counts plus the list of currently open `high`/`critical` tickets with assignee and an `overdue` flag.
+`/reports/daily` — the "daily operations summary" from `docs/product-spec.md` (MVP workflow step 13), `owner`/`admin`/`manager` only (`403` otherwise). `date` is optional and defaults to yesterday; both default and explicit dates are read as a calendar day in the organization's timezone (`Organization.daily_report_timezone`, default `Asia/Bangkok`). Returns: tickets created that day (total + by priority + by category), tickets closed that day (via `Ticket.closed_at`, stamped whenever a ticket transitions to `closed`), and a *current* snapshot (not scoped to the report day) of open/overdue/waiting-approval counts plus the list of currently open `high`/`critical` tickets with assignee and an `overdue` flag.
+
+`/reports/daily/settings` (GET and PATCH) — controls automatic delivery of the report over Telegram, `owner`/`admin` only (`403` otherwise). Fields: `daily_report_enabled` (bool, default `false`), `daily_report_time` (`"HH:MM"` 24h, default `"08:00"`), `daily_report_timezone` (one of a curated 16-zone allowlist, `ALLOWED_TIMEZONES` in `report_routes.py`; default `"Asia/Bangkok"`). PATCH accepts a partial body — omitted fields are left unchanged. Exposed inline on the web app's Daily report page rather than a separate settings screen.
+
+A background scheduler (`daily_report_scheduler.py`, started with the API, every `DAILY_REPORT_WORKER_INTERVAL_SECONDS`, default 60; disable with `DAILY_REPORT_WORKER_ENABLED=false`; its own Postgres advisory lock, separate from the SLA monitor's) ticks over every organization with delivery enabled and, once the current time in the org's own timezone has passed `daily_report_time` and today's report hasn't already gone out (`Organization.daily_report_last_sent_date`), sends the previous day's report to every `owner`/`admin`/`manager` with Telegram linked, localized per recipient, with a link built from `PUBLIC_WEB_URL`. An unknown/invalid timezone is skipped (logged), not crashed. Delivery is per-organization and idempotent per calendar day in that org's timezone.
 
 Planned next:
 

@@ -62,6 +62,11 @@ MESSAGES: dict[str, dict[str, str]] = {
         "ru": "Готово к закрытию, нужно ваше подтверждение ({priority}): {title}\n{url}",
         "th": "พร้อมปิดงาน ต้องรออนุมัติจากคุณ ({priority}): {title}\n{url}",
     },
+    "daily_report": {
+        "en": "📊 Daily report for {date}\nCreated: {created} | Closed: {closed}\nRight now: open {open}, overdue {overdue}, awaiting approval {waiting}\nOpen high/critical: {critical}\n{url}",
+        "ru": "📊 Ежедневная сводка за {date}\nСоздано: {created} | Закрыто: {closed}\nПрямо сейчас: открыто {open}, просрочено {overdue}, ждёт подтверждения {waiting}\nОткрытых high/critical: {critical}\n{url}",
+        "th": "📊 สรุปประจำวันที่ {date}\nสร้างใหม่: {created} | ปิดแล้ว: {closed}\nตอนนี้: เปิดอยู่ {open} เกินกำหนด {overdue} รออนุมัติ {waiting}\nงานความสำคัญสูง/วิกฤตที่เปิดอยู่: {critical}\n{url}",
+    },
     "link_ok": {
         "en": "Telegram is now linked to {email}. You will get notifications about your tickets here. Open tickets assigned to you: {count}.",
         "ru": "Telegram привязан к {email}. Здесь вы будете получать уведомления о ваших заявках. Открытых заявок на вас: {count}.",
