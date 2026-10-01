@@ -41,6 +41,38 @@ def test_ticket_message_is_localized_and_carries_the_link(monkeypatch):
     assert all("Air conditioner is broken" in text for text in (en, ru, th))
 
 
+def _sample_values():
+    return dict(date="2026-01-01", created=3, closed=1, open=5, overdue=0, waiting=0, critical=0, url="https://x")
+
+
+def test_render_daily_report_uses_the_builtin_template_with_no_override():
+    org = Organization(name="Org")
+    assert notifications.render_daily_report(org, "en", **_sample_values()) == notifications.render("daily_report", "en", **_sample_values())
+
+
+def test_render_daily_report_prefers_the_organizations_custom_template_for_that_language():
+    org = Organization(name="Org", daily_report_template={"en": "{created} new today, {closed} closed."})
+
+    text = notifications.render_daily_report(org, "en", **_sample_values())
+
+    assert text == "3 new today, 1 closed."
+
+
+def test_render_daily_report_custom_template_is_per_language():
+    org = Organization(name="Org", daily_report_template={"en": "Custom EN"})
+
+    assert notifications.render_daily_report(org, "en", **_sample_values()) == "Custom EN"
+    assert notifications.render_daily_report(org, "ru", **_sample_values()) == notifications.render("daily_report", "ru", **_sample_values())
+
+
+def test_render_daily_report_falls_back_on_a_bad_template_at_render_time():
+    org = Organization(name="Org", daily_report_template={"en": "{this_placeholder_does_not_exist}"})
+
+    text = notifications.render_daily_report(org, "en", **_sample_values())
+
+    assert text == notifications.render("daily_report", "en", **_sample_values())
+
+
 def test_ticket_message_without_a_public_url_has_no_dangling_line(monkeypatch):
     monkeypatch.delenv("PUBLIC_WEB_URL", raising=False)
     text = notifications.ticket_message("response_overdue", make_ticket(), "en", 7)

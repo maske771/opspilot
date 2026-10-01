@@ -95,6 +95,45 @@ def test_an_unknown_timezone_is_skipped_not_crashed(db_session):
     assert org.id not in due_ids(db_session, at_bangkok(2026, 6, 15, 12, 0))
 
 
+def test_skip_weekends_excludes_saturday_and_sunday(db_session):
+    org = make_org(db_session, daily_report_time="08:00", daily_report_skip_weekends=True)
+    assert org.id not in due_ids(db_session, at_bangkok(2026, 6, 13, 9, 0))  # Saturday
+    assert org.id not in due_ids(db_session, at_bangkok(2026, 6, 14, 9, 0))  # Sunday
+    assert org.id in due_ids(db_session, at_bangkok(2026, 6, 15, 9, 0))  # Monday
+
+
+def test_skip_weekends_off_still_sends_on_saturday(db_session):
+    org = make_org(db_session, daily_report_time="08:00", daily_report_skip_weekends=False)
+    assert org.id in due_ids(db_session, at_bangkok(2026, 6, 13, 9, 0))
+
+
+def test_excluded_dates_skip_that_day_only(db_session):
+    org = make_org(db_session, daily_report_time="08:00", daily_report_excluded_dates=[date(2026, 6, 15)])
+    assert org.id not in due_ids(db_session, at_bangkok(2026, 6, 15, 9, 0))
+    assert org.id in due_ids(db_session, at_bangkok(2026, 6, 16, 9, 0))
+
+
+def test_excluded_dates_and_skip_weekends_combine(db_session):
+    org = make_org(db_session, daily_report_time="08:00", daily_report_skip_weekends=True, daily_report_excluded_dates=[date(2026, 6, 16)])
+    assert org.id not in due_ids(db_session, at_bangkok(2026, 6, 13, 9, 0))  # Saturday
+    assert org.id not in due_ids(db_session, at_bangkok(2026, 6, 16, 9, 0))  # explicitly excluded Tuesday
+    assert org.id in due_ids(db_session, at_bangkok(2026, 6, 15, 9, 0))  # ordinary Monday still due
+
+
+def test_a_skipped_weekend_does_not_touch_last_sent_date(db_session, monkeypatch):
+    org = make_org(db_session, daily_report_time="08:00", daily_report_skip_weekends=True)
+    make_user(db_session, org, UserRole.OWNER, chat_id="1", channel=make_channel(db_session, org))
+    monkeypatch.setattr(scheduler, "send_to_user", lambda db, user, text: "sent")
+
+    scheduler.run_tick(db_session, at_bangkok(2026, 6, 13, 9, 0))  # Saturday: skipped
+    db_session.refresh(org)
+    assert org.daily_report_last_sent_date is None
+
+    scheduler.run_tick(db_session, at_bangkok(2026, 6, 15, 9, 0))  # Monday: sends
+    db_session.refresh(org)
+    assert org.daily_report_last_sent_date == date(2026, 6, 15)
+
+
 def test_run_tick_sends_to_managers_only_and_is_idempotent_same_day(db_session, monkeypatch):
     org = make_org(db_session, daily_report_time="08:00")
     channel = make_channel(db_session, org)
@@ -132,6 +171,19 @@ def test_message_is_localized_per_manager_and_carries_a_link(db_session, monkeyp
 
     assert "Daily report" in sent[owner.id] and "https://app.example.com/reports/daily?date=" in sent[owner.id]
     assert "สรุปประจำวัน" in sent[manager.id]
+
+
+def test_run_tick_uses_the_organizations_custom_template(db_session, monkeypatch):
+    org = make_org(db_session, daily_report_time="08:00", daily_report_template={"en": "CUSTOM REPORT: {created} created"})
+    channel = make_channel(db_session, org)
+    owner = make_user(db_session, org, UserRole.OWNER, chat_id="1", channel=channel, lang="en")
+
+    sent = {}
+    monkeypatch.setattr(scheduler, "send_to_user", lambda db, user, text: sent.setdefault(user.id, text) or "sent")
+
+    scheduler.run_tick(db_session, at_bangkok(2026, 6, 15, 9, 0))
+
+    assert sent[owner.id].startswith("CUSTOM REPORT:")
 
 
 def test_orgs_are_processed_independently(db_session, monkeypatch):

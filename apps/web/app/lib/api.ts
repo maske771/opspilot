@@ -192,6 +192,10 @@ export type DailyReportSettings = {
   daily_report_enabled: boolean;
   daily_report_time: string;
   daily_report_timezone: string;
+  daily_report_skip_weekends: boolean;
+  daily_report_excluded_dates: string[];
+  daily_report_template: Record<string, string>;
+  daily_report_template_custom: Record<string, boolean>;
 };
 
 export type OrganizationRead = {

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from .db import SessionLocal, engine
 from .models import Organization, User
-from .notifications import render, send_to_user
+from .notifications import render_daily_report, send_to_user
 from .report_routes import DEFAULT_TIMEZONE, compute_daily_report
 from .roles import MANAGER_ROLES
 
@@ -35,11 +35,16 @@ def _due_orgs(db: Session, now_utc: datetime) -> list[Organization]:
             logger.warning("Organization %s has an unknown timezone %r, skipping", org.id, org.daily_report_timezone)
             continue
         now_local = now_utc.astimezone(tz)
+        today_local = now_local.date()
+        if org.daily_report_skip_weekends and today_local.weekday() >= 5:  # 5 = Saturday, 6 = Sunday
+            continue
+        if today_local in (org.daily_report_excluded_dates or []):
+            continue
         try:
             target = _parse_time(org.daily_report_time)
         except (ValueError, AttributeError):
             target = time_type(8, 0)
-        if now_local.time() >= target and org.daily_report_last_sent_date != now_local.date():
+        if now_local.time() >= target and org.daily_report_last_sent_date != today_local:
             due.append(org)
     return due
 
@@ -51,8 +56,8 @@ def _send_digest(db: Session, org: Organization) -> None:
     url = f"{base}/reports/daily?date={report.date}" if base else ""
     managers = db.scalars(select(User).where(User.organization_id == org.id, User.role.in_(MANAGER_ROLES)))
     for manager in managers:
-        text = render(
-            "daily_report",
+        text = render_daily_report(
+            org,
             manager.notify_language,
             date=report.date,
             created=report.tickets_created,

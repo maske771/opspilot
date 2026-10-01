@@ -3,7 +3,7 @@ import os
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .models import Channel, Ticket, User
+from .models import Channel, Organization, Ticket, User
 from .outbound import send_message
 from .roles import MANAGER_ROLES
 
@@ -87,6 +87,20 @@ def normalize_language(code: str | None) -> str:
 
 def render(kind: str, language: str | None, **values: object) -> str:
     return MESSAGES[kind][normalize_language(language)].format(**values).strip()
+
+
+def render_daily_report(organization: Organization, language: str | None, **values: object) -> str:
+    """Like render("daily_report", ...), but prefers the organization's own template for that
+    language (Organization.daily_report_template) if it has one. Falls back to the built-in
+    template on any formatting error — the template is validated when saved, but this is a second
+    safety net so a bad template never breaks the scheduler."""
+    lang = normalize_language(language)
+    custom = (organization.daily_report_template or {}).get(lang)
+    template = custom or MESSAGES["daily_report"][lang]
+    try:
+        return template.format(**values).strip()
+    except (KeyError, IndexError, ValueError):
+        return MESSAGES["daily_report"][lang].format(**values).strip()
 
 
 def ticket_url(ticket: Ticket) -> str:

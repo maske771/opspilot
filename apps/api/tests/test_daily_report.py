@@ -227,3 +227,116 @@ def test_invalid_time_format_is_rejected(bad_time):
 def test_unknown_timezone_is_rejected():
     with pytest.raises(Exception):
         DailyReportSettingsUpdate(daily_report_timezone="Mars/OlympusMons")
+
+
+def test_settings_default_to_no_weekend_skip_no_excluded_dates_and_builtin_templates(db_session):
+    org = make_org(db_session)
+    owner = make_user(db_session, org, UserRole.OWNER)
+
+    result = get_daily_report_settings(user=owner, db=db_session)
+
+    assert result.daily_report_skip_weekends is False
+    assert result.daily_report_excluded_dates == []
+    assert set(result.daily_report_template) == {"en", "ru", "th"}
+    assert all(v is False for v in result.daily_report_template_custom.values())
+    assert "{date}" in result.daily_report_template["en"]
+
+
+def test_skip_weekends_can_be_toggled(db_session):
+    org = make_org(db_session)
+    owner = make_user(db_session, org, UserRole.OWNER)
+
+    result = update_daily_report_settings(DailyReportSettingsUpdate(daily_report_skip_weekends=True), user=owner, db=db_session)
+
+    assert result.daily_report_skip_weekends is True
+
+
+def test_excluded_dates_round_trip_sorted(db_session):
+    org = make_org(db_session)
+    owner = make_user(db_session, org, UserRole.OWNER)
+
+    result = update_daily_report_settings(
+        DailyReportSettingsUpdate(daily_report_excluded_dates=[date_type(2026, 12, 31), date_type(2026, 1, 1)]),
+        user=owner,
+        db=db_session,
+    )
+
+    assert result.daily_report_excluded_dates == [date_type(2026, 1, 1), date_type(2026, 12, 31)]
+
+
+def test_excluded_dates_can_be_cleared_with_an_empty_list(db_session):
+    org = make_org(db_session)
+    owner = make_user(db_session, org, UserRole.OWNER)
+    update_daily_report_settings(DailyReportSettingsUpdate(daily_report_excluded_dates=[date_type(2026, 1, 1)]), user=owner, db=db_session)
+
+    result = update_daily_report_settings(DailyReportSettingsUpdate(daily_report_excluded_dates=[]), user=owner, db=db_session)
+
+    assert result.daily_report_excluded_dates == []
+
+
+def test_setting_a_custom_template_marks_only_that_language_custom(db_session):
+    org = make_org(db_session)
+    owner = make_user(db_session, org, UserRole.OWNER)
+
+    result = update_daily_report_settings(
+        DailyReportSettingsUpdate(daily_report_template={"en": "Today: {created} new, {closed} closed. {url}"}),
+        user=owner,
+        db=db_session,
+    )
+
+    assert result.daily_report_template["en"] == "Today: {created} new, {closed} closed. {url}"
+    assert result.daily_report_template_custom["en"] is True
+    assert result.daily_report_template_custom["ru"] is False
+    assert result.daily_report_template_custom["th"] is False
+
+
+def test_custom_template_persists_and_is_returned_by_a_later_get(db_session):
+    org = make_org(db_session)
+    owner = make_user(db_session, org, UserRole.OWNER)
+    update_daily_report_settings(DailyReportSettingsUpdate(daily_report_template={"ru": "Сводка: {created}/{closed}"}), user=owner, db=db_session)
+
+    result = get_daily_report_settings(user=owner, db=db_session)
+
+    assert result.daily_report_template["ru"] == "Сводка: {created}/{closed}"
+    assert result.daily_report_template_custom["ru"] is True
+
+
+def test_setting_a_language_to_null_resets_it_to_the_builtin_template(db_session):
+    org = make_org(db_session)
+    owner = make_user(db_session, org, UserRole.OWNER)
+    update_daily_report_settings(DailyReportSettingsUpdate(daily_report_template={"en": "Custom: {created}"}), user=owner, db=db_session)
+
+    result = update_daily_report_settings(DailyReportSettingsUpdate(daily_report_template={"en": None}), user=owner, db=db_session)
+
+    assert result.daily_report_template_custom["en"] is False
+    assert "{date}" in result.daily_report_template["en"]
+
+
+def test_updating_one_languages_template_leaves_other_overrides_alone(db_session):
+    org = make_org(db_session)
+    owner = make_user(db_session, org, UserRole.OWNER)
+    update_daily_report_settings(DailyReportSettingsUpdate(daily_report_template={"en": "EN: {created}"}), user=owner, db=db_session)
+
+    result = update_daily_report_settings(DailyReportSettingsUpdate(daily_report_template={"th": "TH: {created}"}), user=owner, db=db_session)
+
+    assert result.daily_report_template_custom["en"] is True
+    assert result.daily_report_template_custom["th"] is True
+    assert result.daily_report_template["en"] == "EN: {created}"
+
+
+@pytest.mark.parametrize(
+    "bad_template",
+    [
+        "{unknown_placeholder}",
+        "{created",
+        "{}",
+    ],
+)
+def test_template_with_an_invalid_or_unknown_placeholder_is_rejected(bad_template):
+    with pytest.raises(Exception):
+        DailyReportSettingsUpdate(daily_report_template={"en": bad_template})
+
+
+def test_template_language_outside_en_ru_th_is_rejected():
+    with pytest.raises(Exception):
+        DailyReportSettingsUpdate(daily_report_template={"fr": "Bonjour {created}"})

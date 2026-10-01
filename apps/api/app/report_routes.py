@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from .auth import get_current_user
 from .db import get_db
 from .models import Organization, Ticket, TicketPriority, TicketStatus, User
+from .notifications import MESSAGES, SUPPORTED_LANGUAGES
 from .roles import MANAGER_ROLES
 from .tickets import OPEN_STATUSES
 
@@ -41,6 +42,19 @@ ALLOWED_TIMEZONES = (
 )
 
 TIME_PATTERN = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
+
+# Sample values used to validate a custom daily_report_template at save time, and to render it
+# at delivery time — must match daily_report_scheduler.py's _send_digest() render call exactly.
+DAILY_REPORT_SAMPLE_VALUES = {
+    "date": "2026-01-01",
+    "created": 0,
+    "closed": 0,
+    "open": 0,
+    "overdue": 0,
+    "waiting": 0,
+    "critical": 0,
+    "url": "",
+}
 
 
 class PriorityCount(BaseModel):
@@ -80,16 +94,22 @@ class DailyReport(BaseModel):
 
 
 class DailyReportSettings(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
     daily_report_enabled: bool
     daily_report_time: str
     daily_report_timezone: str
+    daily_report_skip_weekends: bool
+    daily_report_excluded_dates: list[date_type]
+    daily_report_template: dict[str, str]  # effective text per language: custom override, or the built-in default
+    daily_report_template_custom: dict[str, bool]  # which languages actually have a custom override
 
 
 class DailyReportSettingsUpdate(BaseModel):
     daily_report_enabled: bool | None = None
     daily_report_time: str | None = None
     daily_report_timezone: str | None = None
+    daily_report_skip_weekends: bool | None = None
+    daily_report_excluded_dates: list[date_type] | None = None
+    daily_report_template: dict[str, str | None] | None = None
 
     @field_validator("daily_report_time")
     @classmethod
@@ -105,6 +125,22 @@ class DailyReportSettingsUpdate(BaseModel):
             raise ValueError(f"timezone must be one of {', '.join(ALLOWED_TIMEZONES)}")
         return value
 
+    @field_validator("daily_report_template")
+    @classmethod
+    def _valid_template(cls, value: dict[str, str | None] | None) -> dict[str, str | None] | None:
+        if value is None:
+            return value
+        for lang, template in value.items():
+            if lang not in SUPPORTED_LANGUAGES:
+                raise ValueError(f"language must be one of {', '.join(SUPPORTED_LANGUAGES)}")
+            if template is None:
+                continue
+            try:
+                template.format(**DAILY_REPORT_SAMPLE_VALUES)
+            except (KeyError, IndexError, ValueError) as exc:
+                raise ValueError(f"invalid template for '{lang}': {exc}") from exc
+        return value
+
 
 def _require_manager(user: User) -> None:
     if user.role not in MANAGER_ROLES:
@@ -114,6 +150,19 @@ def _require_manager(user: User) -> None:
 def _require_admin(user: User) -> None:
     if user.role not in ("owner", "admin"):
         raise HTTPException(status_code=403, detail="Only owner or admin can change daily report settings")
+
+
+def _settings_response(org: Organization) -> DailyReportSettings:
+    custom = org.daily_report_template or {}
+    return DailyReportSettings(
+        daily_report_enabled=org.daily_report_enabled,
+        daily_report_time=org.daily_report_time,
+        daily_report_timezone=org.daily_report_timezone,
+        daily_report_skip_weekends=org.daily_report_skip_weekends,
+        daily_report_excluded_dates=sorted(org.daily_report_excluded_dates or []),
+        daily_report_template={lang: custom.get(lang) or MESSAGES["daily_report"][lang] for lang in SUPPORTED_LANGUAGES},
+        daily_report_template_custom={lang: lang in custom for lang in SUPPORTED_LANGUAGES},
+    )
 
 
 def org_timezone(org: Organization) -> ZoneInfo:
@@ -214,25 +263,37 @@ def daily_report(
 
 
 @router.get("/daily/settings", response_model=DailyReportSettings)
-def get_daily_report_settings(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Organization:
+def get_daily_report_settings(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> DailyReportSettings:
     _require_admin(user)
     org = db.get(Organization, user.organization_id)
     if org is None:
         raise HTTPException(404, "Organization not found")
-    return org
+    return _settings_response(org)
 
 
 @router.patch("/daily/settings", response_model=DailyReportSettings)
 def update_daily_report_settings(
     payload: DailyReportSettingsUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)
-) -> Organization:
+) -> DailyReportSettings:
     _require_admin(user)
     org = db.get(Organization, user.organization_id)
     if org is None:
         raise HTTPException(404, "Organization not found")
-    changes = payload.model_dump(exclude_unset=True, exclude_none=True)
+    changes = payload.model_dump(exclude_unset=True)
+    if "daily_report_template" in changes:
+        template_changes = changes.pop("daily_report_template")
+        if template_changes is not None:
+            custom = dict(org.daily_report_template or {})
+            for lang, text in template_changes.items():
+                if text is None:
+                    custom.pop(lang, None)
+                else:
+                    custom[lang] = text
+            org.daily_report_template = custom or None
     for field, value in changes.items():
+        if value is None:
+            continue
         setattr(org, field, value)
     db.commit()
     db.refresh(org)
-    return org
+    return _settings_response(org)
