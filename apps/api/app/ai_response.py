@@ -32,9 +32,10 @@ class ResponseGenerator(Protocol):
     def generate_follow_up(self, *, customer_message: str, ticket_status: str, language: Language = "en") -> GeneratedResponse: ...
 
 
-# Categories where a photo of the problem meaningfully helps triage/diagnosis. Excludes "emergency"
-# (don't delay a safety response asking for a photo) and "other" (no clear visual need).
-PHOTO_REQUEST_CATEGORIES = {"plumbing", "electrical", "hvac", "appliance", "access"}
+# A photo helps almost every category — including "other", where the classifier had no keyword match
+# and a photo is often the fastest way to actually find out what's wrong. The one exception is
+# "emergency": don't delay a safety response by asking for a photo.
+NO_PHOTO_REQUEST_CATEGORIES = {"emergency"}
 
 _PHOTO_REQUEST: dict[Language, str] = {
     "en": "If you can, please also send a photo of the issue — it helps our team respond faster.",
@@ -113,7 +114,7 @@ class RuleBasedResponseGenerator:
             text = templates[category]
         else:
             text = templates["default"]
-        if not has_media and category in PHOTO_REQUEST_CATEGORIES:
+        if not has_media and category not in NO_PHOTO_REQUEST_CATEGORIES:
             photo_request = _PHOTO_REQUEST.get(language, _PHOTO_REQUEST["en"])
             text = f"{text}\n\n{photo_request}"
         return GeneratedResponse(text=text, provider="rule-based", confidence=0.82)

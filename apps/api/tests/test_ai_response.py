@@ -64,10 +64,11 @@ def test_generate_does_not_ask_for_a_photo_when_one_was_already_sent():
     assert "photo" not in result.text.lower()
 
 
-def test_generate_does_not_ask_for_a_photo_outside_visual_categories():
+def test_generate_asks_for_a_photo_for_an_unclassified_other_category():
+    # "other" means the classifier had no keyword match — exactly when a photo helps most.
     generator = RuleBasedResponseGenerator()
-    other = generator.generate(customer_message="x", category="other", priority="low", language="en", has_media=False)
-    assert "photo" not in other.text.lower()
+    other = generator.generate(customer_message="у меня проблема", category="other", priority="medium", language="en", has_media=False)
+    assert "photo" in other.text.lower()
 
 
 def test_generate_does_not_ask_for_a_photo_during_a_critical_emergency():
