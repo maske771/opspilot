@@ -28,7 +28,8 @@ export const en = {
   'nav.customers': 'Customers',
   'nav.channels': 'Channels',
   'nav.team': 'Team',
-  'nav.setup': 'Setup',
+  'nav.settings': 'Settings',
+  'nav.setup': 'Setup wizard',
   'nav.menu': 'Main menu',
   'nav.group.work': 'Work',
   'nav.group.directory': 'Directory',
@@ -344,6 +345,30 @@ export const en = {
   'analytics.unit.day': 'd',
   'analytics.unit.hour': 'h',
   'analytics.unit.min': 'm',
+
+  'settings.subtitle': 'Company details and SLA targets for your organization.',
+  'settings.company.title': 'Company',
+  'settings.company.namePlaceholder': 'Company name',
+  'settings.company.saved': 'Saved.',
+  'settings.company.saveFailed': 'Could not save the company name',
+
+  'settings.sla.title': 'SLA targets',
+  'settings.sla.desc': 'Response and resolution time targets applied to new tickets, by priority. Leave a priority as "Default" to use the built-in recommendation.',
+  'settings.sla.response': 'Response (min)',
+  'settings.sla.resolution': 'Resolution (min)',
+  'settings.sla.status': 'Status',
+  'settings.sla.default': 'Default',
+  'settings.sla.custom': 'Custom',
+  'settings.sla.reset': 'Reset',
+  'settings.sla.saved': 'Saved.',
+  'settings.sla.saveFailed': 'Could not save SLA targets',
+  'settings.sla.loadFailed': 'Could not load SLA targets',
+  'settings.sla.invalidValue': 'Enter a response and resolution time of at least 1 minute.',
+
+  'settings.related.title': 'Related settings',
+  'settings.related.dailyReport': 'Daily report delivery',
+  'settings.related.channels': 'Channels',
+  'settings.related.team': 'Team',
 };
 
 export type Messages = typeof en;

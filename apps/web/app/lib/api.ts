@@ -206,6 +206,13 @@ export type SlaDefault = {
   resolution_minutes: number;
 };
 
+export type EffectiveSla = {
+  priority: TicketPriority;
+  response_minutes: number;
+  resolution_minutes: number;
+  is_custom: boolean;
+};
+
 export type DayVolume = {
   date: string;
   created: number;

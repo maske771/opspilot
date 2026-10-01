@@ -1,15 +1,16 @@
+import uuid
 from datetime import datetime, timezone
 
 import pytest
 
-from app.models import Ticket, TicketPriority, TicketStatus
+from app.models import Organization, Ticket, TicketPriority, TicketStatus, User, UserRole
 from app.sla import calculate_sla
-from app.tickets import _transition
+from app.tickets import TicketCreate, _transition, create_ticket
 
 
 def make_ticket(status: TicketStatus) -> Ticket:
     return Ticket(
-        organization_id=__import__("uuid").uuid4(),
+        organization_id=uuid.uuid4(),
         title="Test",
         description="Test ticket",
         status=status,
@@ -88,3 +89,47 @@ def test_sla_calculation() -> None:
     response, resolution = calculate_sla(TicketPriority.HIGH, created_at)
     assert response.isoformat() == "2026-09-15T10:30:00+00:00"
     assert resolution.isoformat() == "2026-09-15T14:00:00+00:00"
+
+
+def test_sla_overrides_replace_both_minutes_for_the_matching_priority() -> None:
+    created_at = datetime(2026, 9, 15, 10, 0, tzinfo=timezone.utc)
+    response, resolution = calculate_sla(TicketPriority.HIGH, created_at, {"high": {"response_minutes": 10, "resolution_minutes": 90}})
+    assert response.isoformat() == "2026-09-15T10:10:00+00:00"
+    assert resolution.isoformat() == "2026-09-15T11:30:00+00:00"
+
+
+def test_sla_override_can_set_only_one_of_the_two_minutes() -> None:
+    created_at = datetime(2026, 9, 15, 10, 0, tzinfo=timezone.utc)
+    response, resolution = calculate_sla(TicketPriority.HIGH, created_at, {"high": {"response_minutes": 5}})
+    assert response.isoformat() == "2026-09-15T10:05:00+00:00"
+    assert resolution.isoformat() == "2026-09-15T14:00:00+00:00"  # untouched default for HIGH
+
+
+def test_sla_override_for_a_different_priority_does_not_apply() -> None:
+    created_at = datetime(2026, 9, 15, 10, 0, tzinfo=timezone.utc)
+    response, resolution = calculate_sla(TicketPriority.HIGH, created_at, {"critical": {"response_minutes": 1, "resolution_minutes": 1}})
+    assert response.isoformat() == "2026-09-15T10:30:00+00:00"
+    assert resolution.isoformat() == "2026-09-15T14:00:00+00:00"
+
+
+def test_sla_overrides_none_and_empty_dict_both_mean_no_override() -> None:
+    created_at = datetime(2026, 9, 15, 10, 0, tzinfo=timezone.utc)
+    assert calculate_sla(TicketPriority.LOW, created_at, None) == calculate_sla(TicketPriority.LOW, created_at, {})
+
+
+def test_creating_a_ticket_applies_the_organizations_sla_overrides(db_session):
+    org = Organization(name="Org", sla_overrides={"critical": {"response_minutes": 2, "resolution_minutes": 10}})
+    db_session.add(org)
+    db_session.flush()
+    owner = User(organization_id=org.id, email="owner@example.com", password_hash="h", role=UserRole.OWNER)
+    db_session.add(owner)
+    db_session.commit()
+
+    ticket = create_ticket(
+        TicketCreate(organization_id=org.id, title="Gas smell", description="x", priority=TicketPriority.CRITICAL),
+        user=owner,
+        db=db_session,
+    )
+
+    assert (ticket.response_deadline - ticket.created_at).total_seconds() == 2 * 60
+    assert (ticket.resolution_deadline - ticket.created_at).total_seconds() == 10 * 60

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from .assignment import find_assignee_for_category
 from .auth import get_current_user
 from .db import get_db
-from .models import Ticket, TicketPriority, TicketStatus, User
+from .models import Organization, Ticket, TicketPriority, TicketStatus, User
 from .notifications import notify_managers_approval_needed
 from .roles import MANAGER_ROLES
 from .sla import calculate_sla
@@ -74,6 +74,11 @@ class TicketRead(BaseModel):
     updated_at: datetime
     closed_at: datetime | None
     first_responded_at: datetime | None
+
+
+def _org_sla_overrides(db: Session, organization_id: uuid.UUID) -> dict | None:
+    org = db.get(Organization, organization_id)
+    return org.sla_overrides if org else None
 
 
 def _get_ticket(ticket_id: uuid.UUID, user: User, db: Session) -> Ticket:
@@ -148,7 +153,7 @@ def create_ticket(payload: TicketCreate, user: User = Depends(get_current_user),
     ticket = Ticket(organization_id=user.organization_id, customer_id=payload.customer_id, property_id=payload.property_id, unit_id=payload.unit_id, conversation_id=payload.conversation_id, title=payload.title, description=payload.description, category=payload.category, priority=payload.priority, status=TicketStatus.NEW)
     db.add(ticket)
     db.flush()
-    ticket.response_deadline, ticket.resolution_deadline = calculate_sla(ticket.priority, ticket.created_at)
+    ticket.response_deadline, ticket.resolution_deadline = calculate_sla(ticket.priority, ticket.created_at, _org_sla_overrides(db, user.organization_id))
     assignee = find_assignee_for_category(db, user.organization_id, ticket.category)
     if assignee is not None:
         ticket.assignee_id = assignee.id
@@ -173,7 +178,7 @@ def update_ticket(ticket_id: uuid.UUID, payload: TicketUpdate, user: User = Depe
     for field, value in changes.items():
         setattr(ticket, field, value)
     if priority_changed:
-        ticket.response_deadline, ticket.resolution_deadline = calculate_sla(ticket.priority, ticket.created_at)
+        ticket.response_deadline, ticket.resolution_deadline = calculate_sla(ticket.priority, ticket.created_at, _org_sla_overrides(db, ticket.organization_id))
     if ticket.assignee_id is not None and ticket.status == TicketStatus.NEW:
         ticket.status = TicketStatus.ASSIGNED
     db.commit()

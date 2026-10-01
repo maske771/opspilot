@@ -15,6 +15,8 @@ GET  /auth/me
 ```text
 GET   /organization
 PATCH /organization
+GET   /organization/sla
+PATCH /organization/sla
 GET   /users
 POST  /users
 PATCH /users/{id}/role
@@ -27,6 +29,8 @@ All user and organization operations are tenant-scoped. Owner/admin permissions 
 `specialties` is a list of ticket category strings (e.g. `plumbing`, `hvac`, `electrical`) a staff/technician user can be assigned. Used by the ticket auto-assignment engine below.
 
 `PATCH /organization` accepts a partial body (`name`, `onboarding_completed`) — omitted fields are left unchanged. `onboarding_completed` defaults to `false` on a new organization and gates the web app's `/onboarding` setup wizard (owner/admin only): a walkthrough of company name, connecting a channel, adding a property, inviting a teammate, reviewing the recommended SLA (`GET /sla/defaults`, read-only), sending a test request, and marking the organization live. Visiting `/onboarding` once `onboarding_completed` is `true` redirects to the dashboard. CSV/XLSX property import from `product-spec.md`'s onboarding flow is not implemented — deferred, properties are added one at a time.
+
+`/organization/sla` (GET and PATCH, owner/admin only) — the web app's `/settings` screen. Returns one row per `TicketPriority` (`priority`, `response_minutes`, `resolution_minutes`, `is_custom`): the organization's *effective* SLA targets, i.e. its own override (`Organization.sla_overrides`, a JSONB map keyed by priority value) where set, otherwise the built-in default from `sla.SLA_MINUTES`. PATCH takes a partial body keyed by priority (`critical`/`high`/`medium`/`low`), each either `{response_minutes, resolution_minutes}` (both required together, 1–43200) to set an override or `null` to clear that priority back to default; priorities omitted from the body are left untouched. New tickets — from `POST /tickets`, a priority change via `PATCH /tickets/{id}`, and webhook-created tickets — look up the organization's override at creation/recalculation time via `sla.calculate_sla(priority, created_at, overrides)`.
 
 ## Properties / units
 
