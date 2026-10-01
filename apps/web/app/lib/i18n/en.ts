@@ -38,6 +38,7 @@ export const en = {
   'nav.openMenu': 'Open menu',
   'nav.closeMenu': 'Close menu',
   'nav.dailyReport': 'Daily report',
+  'nav.analytics': 'Analytics',
 
   'auth.email': 'Email',
   'auth.password': 'Password',
@@ -321,6 +322,28 @@ export const en = {
   'onboarding.golive.teamSkipped': 'No one invited yet — add your team anytime in Team.',
   'onboarding.golive.finish': 'Go to dashboard',
   'onboarding.golive.finishFailed': 'Could not finish setup',
+
+  'analytics.subtitle': 'Ticket volume, SLA performance and breakdowns over a date range.',
+  'analytics.loadFailed': 'Could not load analytics',
+  'analytics.last7': 'Last 7 days',
+  'analytics.last30': 'Last 30 days',
+  'analytics.last90': 'Last 90 days',
+  'analytics.volumeTitle': 'Ticket volume',
+  'analytics.volumeChartLabel': 'Tickets created and closed per day',
+  'analytics.created': 'Created',
+  'analytics.closed': 'Closed',
+  'analytics.slaResponse': 'Response SLA',
+  'analytics.slaResolution': 'Resolution SLA',
+  'analytics.slaMet': 'Met',
+  'analytics.slaMissed': 'Missed',
+  'analytics.slaPending': 'Pending',
+  'analytics.byCategory': 'By category',
+  'analytics.byProperty': 'By property',
+  'analytics.byStaff': 'By staff',
+  'analytics.noData': 'No data in this range.',
+  'analytics.unit.day': 'd',
+  'analytics.unit.hour': 'h',
+  'analytics.unit.min': 'm',
 };
 
 export type Messages = typeof en;

@@ -191,16 +191,17 @@ PATCH /reports/daily/settings
 
 A background scheduler (`daily_report_scheduler.py`, started with the API, every `DAILY_REPORT_WORKER_INTERVAL_SECONDS`, default 60; disable with `DAILY_REPORT_WORKER_ENABLED=false`; its own Postgres advisory lock, separate from the SLA monitor's) ticks over every organization with delivery enabled and, once the current time in the org's own timezone has passed `daily_report_time` and today's report hasn't already gone out (`Organization.daily_report_last_sent_date`), sends the previous day's report to every `owner`/`admin`/`manager` with Telegram linked, localized per recipient, with a link built from `PUBLIC_WEB_URL`. An unknown/invalid timezone is skipped (logged), not crashed. Delivery is per-organization and idempotent per calendar day in that org's timezone.
 
-Planned next:
-
 ```text
-GET /dashboard/open-tickets
-GET /dashboard/overdue
-GET /dashboard/critical
-GET /analytics/categories
-GET /analytics/sla
-GET /analytics/vendors
+GET /analytics/overview?from=YYYY-MM-DD&to=YYYY-MM-DD
 ```
+
+`/analytics/overview` — the `/analytics` web screen, `owner`/`admin`/`manager` only (`403` otherwise). Both `from`/`to` are optional; default is the last 30 days ending today in the organization's timezone (same `org_timezone()` helper the daily report uses). A reversed range is swapped, not rejected; a range longer than 365 days is clamped. Returns:
+
+- `volume`: one row per calendar day in range (`date`, `created`, `closed`) — the gaps are filled with zeros so a line chart stays continuous.
+- `by_category` / `by_property` / `by_staff`: counts (and, for category/staff, `avg_resolution_minutes` over tickets *closed* in range) grouped from `Ticket.category` / `property_id` / `assignee_id`. `by_category`'s `created` count and `by_staff`'s `closed` count are scoped independently (a category can have tickets created in range with none closed yet, and vice versa).
+- `sla.response` / `sla.resolution`: `{met, missed, pending, met_pct}` over the cohort of tickets *created* in range. `met_pct` excludes `pending` from its denominator. Resolution compares `Ticket.closed_at` against `resolution_deadline`; response compares the new `Ticket.first_responded_at` (see below) against `response_deadline`. A ticket with a passed deadline and no completion timestamp counts as `missed`, not silently dropped.
+
+`Ticket.first_responded_at` (migration 013) is stamped once, the first time a ticket's status leaves `new`/`assigned` (mirroring `sla_monitor.py`'s `RESPONSE_OPEN` — the same set the response deadline applies to). Auto-assignment on creation stays inside that set and is not counted as a response; accepting, starting, completing or closing a ticket is.
 
 ## Internal AI endpoints
 

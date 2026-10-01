@@ -48,6 +48,35 @@ def test_non_closing_transitions_leave_closed_at_alone() -> None:
     assert ticket.closed_at is None
 
 
+def test_staying_within_new_or_assigned_does_not_stamp_first_responded_at() -> None:
+    ticket = make_ticket(TicketStatus.NEW)
+    _transition(ticket, TicketStatus.ASSIGNED)
+    assert ticket.first_responded_at is None
+
+
+@pytest.mark.parametrize(
+    ("current", "target"),
+    [
+        (TicketStatus.NEW, TicketStatus.IN_PROGRESS),
+        (TicketStatus.NEW, TicketStatus.CLOSED),
+        (TicketStatus.ASSIGNED, TicketStatus.ACCEPTED),
+    ],
+)
+def test_leaving_new_or_assigned_stamps_first_responded_at(current: TicketStatus, target: TicketStatus) -> None:
+    ticket = make_ticket(current)
+    before = datetime.now(timezone.utc)
+    _transition(ticket, target)
+    assert ticket.first_responded_at is not None and ticket.first_responded_at >= before
+
+
+def test_first_responded_at_is_stamped_only_once() -> None:
+    ticket = make_ticket(TicketStatus.ASSIGNED)
+    _transition(ticket, TicketStatus.ACCEPTED)
+    first = ticket.first_responded_at
+    _transition(ticket, TicketStatus.IN_PROGRESS)
+    assert ticket.first_responded_at == first
+
+
 def test_invalid_ticket_transition() -> None:
     ticket = make_ticket(TicketStatus.CLOSED)
     with pytest.raises(Exception, match="Invalid ticket transition"):

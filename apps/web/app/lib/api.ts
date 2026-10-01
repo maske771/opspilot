@@ -205,3 +205,46 @@ export type SlaDefault = {
   response_minutes: number;
   resolution_minutes: number;
 };
+
+export type DayVolume = {
+  date: string;
+  created: number;
+  closed: number;
+};
+
+export type CategoryBreakdown = {
+  category: string;
+  created: number;
+  closed: number;
+  avg_resolution_minutes: number | null;
+};
+
+export type PropertyBreakdown = {
+  property_id: string;
+  name: string;
+  created: number;
+};
+
+export type StaffBreakdown = {
+  user_id: string;
+  email: string;
+  closed: number;
+  avg_resolution_minutes: number | null;
+};
+
+export type SlaBucket = {
+  met: number;
+  missed: number;
+  pending: number;
+  met_pct: number | null;
+};
+
+export type AnalyticsOverview = {
+  period_start: string;
+  period_end: string;
+  volume: DayVolume[];
+  by_category: CategoryBreakdown[];
+  by_property: PropertyBreakdown[];
+  by_staff: StaffBreakdown[];
+  sla: { response: SlaBucket; resolution: SlaBucket };
+};

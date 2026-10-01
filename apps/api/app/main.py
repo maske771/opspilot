@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .analytics_routes import router as analytics_router
 from .attachment_routes import router as attachment_router
 from .auth_routes import router as auth_router
 from .daily_report_scheduler import run_forever as run_daily_report_scheduler, scheduler_enabled as daily_report_scheduler_enabled
@@ -87,6 +88,7 @@ app.include_router(units_router)
 app.include_router(dashboard_router)
 app.include_router(report_router)
 app.include_router(sla_router)
+app.include_router(analytics_router)
 app.include_router(channel_router)
 app.include_router(conversation_router)
 app.include_router(inbox_router)

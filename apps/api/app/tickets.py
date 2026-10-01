@@ -22,6 +22,10 @@ OPEN_STATUSES = (
     TicketStatus.IN_PROGRESS,
     TicketStatus.WAITING_APPROVAL,
 )
+# Matches sla_monitor.py's RESPONSE_OPEN: the response_deadline only applies while a ticket is
+# in one of these statuses. Auto-assignment on creation stays inside this set (it's not a human
+# response); leaving it — accept, start, close, etc. — is what counts as "responded" for SLA/analytics.
+UNRESPONDED_STATUSES = (TicketStatus.NEW, TicketStatus.ASSIGNED)
 
 router = APIRouter(prefix="/tickets", tags=["tickets"])
 
@@ -69,6 +73,7 @@ class TicketRead(BaseModel):
     created_at: datetime
     updated_at: datetime
     closed_at: datetime | None
+    first_responded_at: datetime | None
 
 
 def _get_ticket(ticket_id: uuid.UUID, user: User, db: Session) -> Ticket:
@@ -96,6 +101,8 @@ def _transition(ticket: Ticket, target: TicketStatus) -> None:
     }
     if target not in allowed[ticket.status]:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Invalid ticket transition: {ticket.status.value} -> {target.value}")
+    if ticket.status in UNRESPONDED_STATUSES and target not in UNRESPONDED_STATUSES and ticket.first_responded_at is None:
+        ticket.first_responded_at = datetime.now(timezone.utc)
     ticket.status = target
     if target == TicketStatus.CLOSED:
         ticket.closed_at = datetime.now(timezone.utc)

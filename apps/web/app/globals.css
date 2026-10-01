@@ -59,6 +59,9 @@
   --priority-medium-text: #1d4ed8;
   --priority-low-bg: #f8fafc;
   --priority-low-text: #475569;
+
+  --chart-created: #4f52bd;
+  --chart-closed: #15803d;
 }
 
 :root[data-theme='dark'] {
@@ -113,6 +116,9 @@
   --priority-medium-text: #93c5fd;
   --priority-low-bg: #1e293b;
   --priority-low-text: #a3b1c6;
+
+  --chart-created: #5f63cf;
+  --chart-closed: #16a34a;
 }
 
 * {

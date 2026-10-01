@@ -27,6 +27,7 @@ function navGroups(role: UserRole | undefined): NavGroup[] {
             { href: '/dashboard', label: 'nav.dashboard', icon: 'dashboard' },
             { href: '/tickets', label: 'nav.tickets', icon: 'tickets' },
             { href: '/reports/daily', label: 'nav.dailyReport', icon: 'report' },
+            { href: '/analytics', label: 'nav.analytics', icon: 'analytics' },
           ]
         : [{ href: '/', label: 'nav.myTickets', icon: 'tickets' }],
     },

@@ -7,6 +7,7 @@ export type IconName =
   | 'channels'
   | 'team'
   | 'report'
+  | 'analytics'
   | 'setup'
   | 'menu'
   | 'close'
@@ -63,6 +64,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
       <circle cx="9" cy="7" r="4" />
       <path d="m16 11 2 2 4-4" />
+    </>
+  ),
+  analytics: (
+    <>
+      <path d="M3 3v16a2 2 0 0 0 2 2h16" />
+      <path d="M7 15l4-6 4 3 5-8" />
     </>
   ),
   setup: (
