@@ -52,6 +52,42 @@ def test_generate_follow_up_russian():
     assert "закрыт" in result.text.lower()
 
 
+def test_generate_asks_for_a_photo_for_a_visual_category_with_no_media():
+    generator = RuleBasedResponseGenerator()
+    result = generator.generate(customer_message="water leak", category="plumbing", priority="high", language="en", has_media=False)
+    assert "photo" in result.text.lower()
+
+
+def test_generate_does_not_ask_for_a_photo_when_one_was_already_sent():
+    generator = RuleBasedResponseGenerator()
+    result = generator.generate(customer_message="water leak", category="plumbing", priority="high", language="en", has_media=True)
+    assert "photo" not in result.text.lower()
+
+
+def test_generate_does_not_ask_for_a_photo_outside_visual_categories():
+    generator = RuleBasedResponseGenerator()
+    other = generator.generate(customer_message="x", category="other", priority="low", language="en", has_media=False)
+    assert "photo" not in other.text.lower()
+
+
+def test_generate_does_not_ask_for_a_photo_during_a_critical_emergency():
+    generator = RuleBasedResponseGenerator()
+    result = generator.generate(customer_message="fire!", category="emergency", priority="critical", language="en", has_media=False)
+    assert "photo" not in result.text.lower()
+
+
+def test_generate_photo_request_is_localized_russian():
+    generator = RuleBasedResponseGenerator()
+    result = generator.generate(customer_message="течёт вода", category="plumbing", priority="high", language="ru", has_media=False)
+    assert "фото" in result.text.lower()
+
+
+def test_generate_has_media_defaults_to_false():
+    generator = RuleBasedResponseGenerator()
+    result = generator.generate(customer_message="water leak", category="plumbing", priority="high", language="en")
+    assert "photo" in result.text.lower()
+
+
 def test_generate_falls_back_to_english_for_unsupported_language():
     generator = RuleBasedResponseGenerator()
     result = generator.generate(customer_message="x", category="other", priority="low", language="th")

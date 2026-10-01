@@ -28,9 +28,18 @@ class GeneratedResponse:
 
 
 class ResponseGenerator(Protocol):
-    def generate(self, *, customer_message: str, category: str, priority: str, language: Language = "en") -> GeneratedResponse: ...
+    def generate(self, *, customer_message: str, category: str, priority: str, language: Language = "en", has_media: bool = False) -> GeneratedResponse: ...
     def generate_follow_up(self, *, customer_message: str, ticket_status: str, language: Language = "en") -> GeneratedResponse: ...
 
+
+# Categories where a photo of the problem meaningfully helps triage/diagnosis. Excludes "emergency"
+# (don't delay a safety response asking for a photo) and "other" (no clear visual need).
+PHOTO_REQUEST_CATEGORIES = {"plumbing", "electrical", "hvac", "appliance", "access"}
+
+_PHOTO_REQUEST: dict[Language, str] = {
+    "en": "If you can, please also send a photo of the issue — it helps our team respond faster.",
+    "ru": "Если можете, пришлите, пожалуйста, фото проблемы — это поможет нашей команде быстрее отреагировать.",
+}
 
 _INTAKE_TEMPLATES: dict[Language, dict[str, str]] = {
     "en": {
@@ -96,7 +105,7 @@ def generate_greeting(*, customer_message: str, language: Language = "en") -> Ge
 class RuleBasedResponseGenerator:
     """Safe deterministic baseline used until an external LLM provider is configured."""
 
-    def generate(self, *, customer_message: str, category: str, priority: str, language: Language = "en") -> GeneratedResponse:
+    def generate(self, *, customer_message: str, category: str, priority: str, language: Language = "en", has_media: bool = False) -> GeneratedResponse:
         templates = _INTAKE_TEMPLATES.get(language, _INTAKE_TEMPLATES["en"])
         if priority == "critical":
             text = templates["critical"]
@@ -104,6 +113,9 @@ class RuleBasedResponseGenerator:
             text = templates[category]
         else:
             text = templates["default"]
+        if not has_media and category in PHOTO_REQUEST_CATEGORIES:
+            photo_request = _PHOTO_REQUEST.get(language, _PHOTO_REQUEST["en"])
+            text = f"{text}\n\n{photo_request}"
         return GeneratedResponse(text=text, provider="rule-based", confidence=0.82)
 
     def generate_follow_up(self, *, customer_message: str, ticket_status: str, language: Language = "en") -> GeneratedResponse:

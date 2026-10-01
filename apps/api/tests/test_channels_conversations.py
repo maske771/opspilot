@@ -5,7 +5,8 @@ import pytest
 from pydantic import ValidationError
 
 from app.channel_routes import SUPPORTED_CHANNELS, ChannelUpdate, normalize_channel_name, normalize_channel_value
-from app.webhook_service import normalize_event
+from app.models import Channel, Organization
+from app.webhook_service import NormalizedEvent, ingest_normalized_event, normalize_event
 
 
 def test_channel_connect_payload_rejects_blank_name():
@@ -98,3 +99,36 @@ def test_normalize_telegram_text_message_has_no_media():
     assert event is not None
     assert event.media_file_id is None
     assert event.media_type is None
+
+
+def make_org_and_channel(db_session):
+    org = Organization(name="Org")
+    db_session.add(org)
+    db_session.flush()
+    channel = Channel(organization_id=org.id, type="telegram", account_id="bot1", name="Bot", status="connected")
+    db_session.add(channel)
+    db_session.flush()
+    return org, channel
+
+
+def test_ingest_asks_for_a_photo_when_a_new_ticket_has_no_media(db_session):
+    org, channel = make_org_and_channel(db_session)
+    event = NormalizedEvent(external_conversation_id="1", external_user_id="1", external_message_id="1", text="water leak in the kitchen")
+
+    data, _, ticket_created = ingest_normalized_event(db_session, org.id, {"type": channel.type, "id": channel.id}, event)
+
+    assert ticket_created is True
+    assert "photo" in data["reply_text"].lower()
+
+
+def test_ingest_does_not_ask_for_a_photo_when_the_customer_already_sent_one(db_session):
+    org, channel = make_org_and_channel(db_session)
+    event = NormalizedEvent(
+        external_conversation_id="2", external_user_id="2", external_message_id="2",
+        text="water leak", media_file_id="file123", media_type="photo",
+    )
+
+    data, _, ticket_created = ingest_normalized_event(db_session, org.id, {"type": channel.type, "id": channel.id}, event)
+
+    assert ticket_created is True
+    assert "photo" not in data["reply_text"].lower()

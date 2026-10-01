@@ -165,7 +165,7 @@ def ingest_normalized_event(db: Session, organization_id, channel, event: Normal
         if ticket is None:
             result = generate_greeting(customer_message=event.text, language=language)
         elif ticket_created:
-            result = generator.generate(customer_message=event.text, category=ticket.category, priority=ticket.priority.value, language=language)
+            result = generator.generate(customer_message=event.text, category=ticket.category, priority=ticket.priority.value, language=language, has_media=has_media)
         else:
             result = generator.generate_follow_up(customer_message=event.text, ticket_status=ticket.status.value, language=language)
         reply_text = result.text

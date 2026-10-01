@@ -111,6 +111,8 @@ Anything else gets `401 Invalid webhook credentials`, the same answer whether or
 
 Supported inbound events are normalized into the domain model: `CustomerIdentity` → `Customer` → `Conversation` → `Message`. A new non-closed ticket is created for a conversation when one does not already exist. Unsupported/unrecognized provider payloads are still accepted and stored, but return `normalized: false` for later processing.
 
+When a new ticket is created, the customer gets an automatic acknowledgement (`ai_response.RuleBasedResponseGenerator`) localized to their detected language. For a category where a photo meaningfully helps diagnosis (`plumbing`, `electrical`, `hvac`, `appliance`, `access` — not `emergency`, where asking for a photo would delay a safety response, or `other`, where it adds no value) and no photo arrived with the triggering message, the acknowledgement appends a one-line request to send a photo.
+
 ## Conversations/messages
 
 Implemented read API:
