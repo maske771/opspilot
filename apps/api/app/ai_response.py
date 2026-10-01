@@ -29,7 +29,9 @@ class GeneratedResponse:
 
 class ResponseGenerator(Protocol):
     def generate(self, *, customer_message: str, category: str, priority: str, language: Language = "en", has_media: bool = False) -> GeneratedResponse: ...
-    def generate_follow_up(self, *, customer_message: str, ticket_status: str, language: Language = "en") -> GeneratedResponse: ...
+    def generate_follow_up(
+        self, *, customer_message: str, ticket_status: str, language: Language = "en", category: str | None = None, has_media: bool = False
+    ) -> GeneratedResponse: ...
 
 
 # A photo helps almost every category — including "other", where the classifier had no keyword match
@@ -119,12 +121,18 @@ class RuleBasedResponseGenerator:
             text = f"{text}\n\n{photo_request}"
         return GeneratedResponse(text=text, provider="rule-based", confidence=0.82)
 
-    def generate_follow_up(self, *, customer_message: str, ticket_status: str, language: Language = "en") -> GeneratedResponse:
+    def generate_follow_up(
+        self, *, customer_message: str, ticket_status: str, language: Language = "en", category: str | None = None, has_media: bool = False
+    ) -> GeneratedResponse:
         language = language if language in _STATUS_PHRASES else "en"
         if is_status_query(customer_message):
             text = _STATUS_PHRASES[language].get(ticket_status, _STATUS_PHRASES[language]["new"])
             return GeneratedResponse(text=text, provider="rule-based", confidence=0.75)
-        return GeneratedResponse(text=_FOLLOW_UP_ACK[language], provider="rule-based", confidence=0.7)
+        text = _FOLLOW_UP_ACK[language]
+        if not has_media and category not in NO_PHOTO_REQUEST_CATEGORIES:
+            photo_request = _PHOTO_REQUEST.get(language, _PHOTO_REQUEST["en"])
+            text = f"{text}\n\n{photo_request}"
+        return GeneratedResponse(text=text, provider="rule-based", confidence=0.7)
 
 
 def get_response_generator() -> ResponseGenerator:

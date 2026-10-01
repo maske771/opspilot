@@ -8,7 +8,7 @@ from .ai_intake import classify, is_actionable_request
 from .ai_response import detect_language, generate_greeting, get_response_generator
 from .assignment import find_assignee_for_category
 from .customer_match import find_customer, normalize_email, normalize_phone
-from .models import Conversation, Customer, CustomerIdentity, Message, Organization, Ticket, TicketStatus
+from .models import Conversation, Customer, CustomerIdentity, Message, MessageAttachment, Organization, Ticket, TicketStatus
 from .sla import calculate_sla
 
 @dataclass(frozen=True)
@@ -167,7 +167,16 @@ def ingest_normalized_event(db: Session, organization_id, channel, event: Normal
         elif ticket_created:
             result = generator.generate(customer_message=event.text, category=ticket.category, priority=ticket.priority.value, language=language, has_media=has_media)
         else:
-            result = generator.generate_follow_up(customer_message=event.text, ticket_status=ticket.status.value, language=language)
+            # Don't keep asking for a photo if one already arrived for this ticket.
+            photo_on_file = has_media or db.scalar(
+                select(MessageAttachment.id)
+                .join(Message, MessageAttachment.message_id == Message.id)
+                .where(Message.conversation_id == conversation.id, Message.created_at >= ticket.created_at)
+                .limit(1)
+            ) is not None
+            result = generator.generate_follow_up(
+                customer_message=event.text, ticket_status=ticket.status.value, language=language, category=ticket.category, has_media=photo_on_file
+            )
         reply_text = result.text
         db.add(Message(conversation_id=conversation.id, direction="outbound", content=reply_text))
         db.flush()

@@ -83,6 +83,30 @@ def test_generate_photo_request_is_localized_russian():
     assert "фото" in result.text.lower()
 
 
+def test_follow_up_asks_for_a_photo_when_none_is_on_file():
+    generator = RuleBasedResponseGenerator()
+    result = generator.generate_follow_up(customer_message="it is getting worse", ticket_status="new", language="ru", category="other", has_media=False)
+    assert "фото" in result.text.lower()
+
+
+def test_follow_up_does_not_ask_for_a_photo_when_one_is_on_file():
+    generator = RuleBasedResponseGenerator()
+    result = generator.generate_follow_up(customer_message="it is getting worse", ticket_status="new", language="en", category="other", has_media=True)
+    assert "photo" not in result.text.lower()
+
+
+def test_follow_up_status_answer_does_not_ask_for_a_photo():
+    generator = RuleBasedResponseGenerator()
+    result = generator.generate_follow_up(customer_message="any update?", ticket_status="in_progress", language="en", category="plumbing", has_media=False)
+    assert "photo" not in result.text.lower()
+
+
+def test_follow_up_does_not_ask_for_a_photo_on_an_emergency():
+    generator = RuleBasedResponseGenerator()
+    result = generator.generate_follow_up(customer_message="still smoke", ticket_status="new", language="en", category="emergency", has_media=False)
+    assert "photo" not in result.text.lower()
+
+
 def test_generate_has_media_defaults_to_false():
     generator = RuleBasedResponseGenerator()
     result = generator.generate(customer_message="water leak", category="plumbing", priority="high", language="en")

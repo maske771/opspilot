@@ -121,6 +121,28 @@ def test_ingest_asks_for_a_photo_when_a_new_ticket_has_no_media(db_session):
     assert "photo" in data["reply_text"].lower()
 
 
+def test_ingest_follow_up_asks_for_a_photo_until_one_is_on_file(db_session):
+    from app.models import MessageAttachment
+
+    org, channel = make_org_and_channel(db_session)
+    ch = {"type": channel.type, "id": channel.id}
+    ingest_normalized_event(db_session, org.id, ch, NormalizedEvent(external_conversation_id="3", external_user_id="3", external_message_id="1", text="у меня проблема"))
+
+    data, _, ticket_created = ingest_normalized_event(
+        db_session, org.id, ch, NormalizedEvent(external_conversation_id="3", external_user_id="3", external_message_id="2", text="всё ещё не работает")
+    )
+    assert ticket_created is False
+    assert "фото" in data["reply_text"].lower()
+
+    db_session.add(MessageAttachment(organization_id=org.id, message_id=data["message_id"], storage_path="x.jpg", content_type="image/jpeg"))
+    db_session.flush()
+
+    data, _, _ = ingest_normalized_event(
+        db_session, org.id, ch, NormalizedEvent(external_conversation_id="3", external_user_id="3", external_message_id="3", text="ещё капает с потолка")
+    )
+    assert "фото" not in data["reply_text"].lower()
+
+
 def test_ingest_does_not_ask_for_a_photo_when_the_customer_already_sent_one(db_session):
     org, channel = make_org_and_channel(db_session)
     event = NormalizedEvent(
