@@ -45,6 +45,7 @@ function navGroups(role: UserRole | undefined): NavGroup[] {
       items: [
         { href: '/channels', label: 'nav.channels', icon: 'channels' },
         { href: '/team', label: 'nav.team', icon: 'team' },
+        { href: '/services', label: 'nav.services', icon: 'services' },
         { href: '/settings', label: 'nav.settings', icon: 'settings' },
         { href: '/onboarding', label: 'nav.setup', icon: 'setup' },
       ],

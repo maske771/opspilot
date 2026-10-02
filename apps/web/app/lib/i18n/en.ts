@@ -29,6 +29,7 @@ export const en = {
   'nav.channels': 'Channels',
   'nav.team': 'Team',
   'nav.settings': 'Settings',
+  'nav.services': 'Services',
   'nav.setup': 'Setup wizard',
   'nav.menu': 'Main menu',
   'nav.group.work': 'Work',
@@ -385,6 +386,21 @@ export const en = {
   'settings.related.dailyReport': 'Daily report delivery',
   'settings.related.channels': 'Channels',
   'settings.related.team': 'Team',
+
+  'services.subtitle': 'What your company handles. Incoming requests are matched to a service by its keywords; anything unrecognized lands in the system "Other" service for manual sorting. Executors are linked to services on the Team page.',
+  'services.name': 'Name',
+  'services.defaultPriority': 'Default priority',
+  'services.keywords': 'Keywords',
+  'services.keywordsPlaceholder': 'Comma-separated, any language — e.g. leak, water, течёт, кран. A word matches anywhere in the message, case-insensitive.',
+  'services.system': 'System',
+  'services.systemHint': 'Catches every request no other service matched — no keywords needed.',
+  'services.archive': 'Remove',
+  'services.archiveConfirm': 'Remove this service? Existing tickets keep it; new requests will no longer be matched to it, and executors are unlinked from it.',
+  'services.saved': 'Saved.',
+  'services.saveFailed': 'Could not save the service',
+  'services.loadFailed': 'Could not load services',
+  'services.addTitle': 'New service',
+  'services.add': 'Add service',
 };
 
 export type Messages = typeof en;

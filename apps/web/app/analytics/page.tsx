@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RequireAuth, useAuth } from '../lib/auth';
 import { apiFetch, type AnalyticsOverview, type DayVolume } from '../lib/api';
 import { useLocale } from '../lib/locale';
+import { useServices } from '../lib/services';
 import { isManagerRole } from '../lib/roles';
 
 const PRESETS = [7, 30, 90] as const;
@@ -183,7 +184,8 @@ function SlaMeter({ title, bucket, t }: { title: string; bucket: { met: number; 
 
 function AnalyticsView() {
   const { token, user } = useAuth();
-  const { t, tOr } = useLocale();
+  const { t } = useLocale();
+  const { label: serviceLabel } = useServices();
   const [data, setData] = useState<AnalyticsOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -221,11 +223,11 @@ function AnalyticsView() {
     () =>
       (data?.by_category ?? []).map((row) => ({
         key: row.category,
-        label: tOr(`category.${row.category}`, row.category),
+        label: serviceLabel(row.category),
         value: row.created,
         sub: row.avg_resolution_minutes != null ? formatDuration(row.avg_resolution_minutes, t) : undefined,
       })),
-    [data, t, tOr],
+    [data, t, serviceLabel],
   );
   const propertyRows = useMemo(
     () => (data?.by_property ?? []).map((row) => ({ key: row.property_id, label: row.name, value: row.created })),

@@ -12,6 +12,7 @@ from .db import get_db
 from .models import Organization, Ticket, TicketPriority, TicketStatus, User
 from .notifications import notify_managers_approval_needed
 from .roles import MANAGER_ROLES
+from .services import active_services
 from .sla import calculate_sla
 
 APPROVAL_REQUIRED_PRIORITIES = (TicketPriority.HIGH, TicketPriority.CRITICAL)
@@ -74,6 +75,11 @@ class TicketRead(BaseModel):
     updated_at: datetime
     closed_at: datetime | None
     first_responded_at: datetime | None
+
+
+def _ensure_known_service(db: Session, organization_id: uuid.UUID, code: str) -> None:
+    if code not in {s.code for s in active_services(db, organization_id)}:
+        raise HTTPException(status_code=400, detail=f"Unknown service: {code}")
 
 
 def _org_sla_overrides(db: Session, organization_id: uuid.UUID) -> dict | None:
@@ -150,6 +156,7 @@ def create_ticket(payload: TicketCreate, user: User = Depends(get_current_user),
         if conversation is None or conversation.organization_id != user.organization_id:
             raise HTTPException(status_code=400, detail="Conversation does not belong to organization")
 
+    _ensure_known_service(db, user.organization_id, payload.category)
     ticket = Ticket(organization_id=user.organization_id, customer_id=payload.customer_id, property_id=payload.property_id, unit_id=payload.unit_id, conversation_id=payload.conversation_id, title=payload.title, description=payload.description, category=payload.category, priority=payload.priority, status=TicketStatus.NEW)
     db.add(ticket)
     db.flush()
@@ -172,6 +179,8 @@ def get_ticket(ticket_id: uuid.UUID, user: User = Depends(get_current_user), db:
 def update_ticket(ticket_id: uuid.UUID, payload: TicketUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Ticket:
     ticket = _get_ticket(ticket_id, user, db)
     changes = payload.model_dump(exclude_unset=True)
+    if "category" in changes and changes["category"] != ticket.category:
+        _ensure_known_service(db, ticket.organization_id, changes["category"])
     if "assignee_id" in changes and changes["assignee_id"] is not None:
         _ensure_assignee(ticket, changes["assignee_id"], db)
     priority_changed = "priority" in changes and changes["priority"] != ticket.priority

@@ -6,6 +6,7 @@ import { RequireAuth, useAuth } from '../lib/auth';
 import { apiFetch, type TicketPriority, type TicketRead, type TicketStatus, type UserRead } from '../lib/api';
 import type { MessageKey } from '../lib/i18n/en';
 import { useLocale } from '../lib/locale';
+import { useServices } from '../lib/services';
 import { PRIORITY_KEYS, STATUS_KEYS, priorityBadgeStyle, statusBadgeStyle } from '../lib/ui';
 
 const NEXT_ACTION: Partial<Record<TicketStatus, { label: MessageKey; action: string }>> = {
@@ -25,7 +26,8 @@ function Badge({ text, style }: { text: string; style: React.CSSProperties }) {
 
 export function TicketsList({ mine = false }: { mine?: boolean }) {
   const { token, user } = useAuth();
-  const { t, tOr, formatDate } = useLocale();
+  const { t, formatDate } = useLocale();
+  const { label: serviceLabel } = useServices();
   const [tickets, setTickets] = useState<TicketRead[]>([]);
   const [users, setUsers] = useState<UserRead[]>([]);
   const [statusFilter, setStatusFilter] = useState<TicketStatus | ''>('');
@@ -147,7 +149,7 @@ export function TicketsList({ mine = false }: { mine?: boolean }) {
                   <Link href={`/tickets/${ticket.id}`} className="link-reset">
                     <div style={{ fontWeight: 600, fontSize: 14 }}>{ticket.title}</div>
                     <div style={{ fontSize: 12, color: 'var(--color-text-subtle)', marginTop: 3 }}>
-                      {tOr(`category.${ticket.category}`, ticket.category)}
+                      {serviceLabel(ticket.category)}
                     </div>
                   </Link>
                   <Badge text={t(PRIORITY_KEYS[ticket.priority])} style={priorityBadgeStyle(ticket.priority)} />

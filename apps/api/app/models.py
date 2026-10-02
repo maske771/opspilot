@@ -81,6 +81,24 @@ class User(Base):
         return bool(self.telegram_chat_id and self.telegram_channel_id)
 
 
+class Service(Base):
+    """An organization's service catalog entry. Tickets (category) and executors (specialties)
+    reference it by `code`, which never changes after creation."""
+
+    __tablename__ = "services"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    code: Mapped[str] = mapped_column(Text())
+    names: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
+    keywords: Mapped[list[str]] = mapped_column(ARRAY(Text()), default=list, server_default="{}")
+    default_priority: Mapped[TicketPriority] = mapped_column(pg_enum(TicketPriority, "ticket_priority"), default=TicketPriority.MEDIUM)
+    is_system: Mapped[bool] = mapped_column(default=False, server_default="false")
+    archived: Mapped[bool] = mapped_column(default=False, server_default="false")
+    position: Mapped[int] = mapped_column(default=0, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (UniqueConstraint("organization_id", "code", name="uq_services_org_code"),)
+
+
 class Property(Base):
     __tablename__ = "properties"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

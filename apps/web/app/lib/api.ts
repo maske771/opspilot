@@ -210,6 +210,17 @@ export type SlaDefault = {
   resolution_minutes: number;
 };
 
+export type ServiceRead = {
+  id: string;
+  code: string;
+  names: Record<string, string>;
+  keywords: string[];
+  default_priority: TicketPriority;
+  is_system: boolean;
+  archived: boolean;
+  position: number;
+};
+
 export type EffectiveSla = {
   priority: TicketPriority;
   response_minutes: number;

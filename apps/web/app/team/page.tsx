@@ -5,16 +5,18 @@ import { RequireAuth, useAuth } from '../lib/auth';
 import { apiFetch, ApiError, type UserRead, type UserRole } from '../lib/api';
 import { useLocale } from '../lib/locale';
 import { isAdminRole } from '../lib/roles';
+import { useServices } from '../lib/services';
 
 const ASSIGNABLE_ROLES = ['staff', 'technician'];
 
 const CREATABLE_ROLES: UserRole[] = ['admin', 'manager', 'staff', 'technician'];
 
-const CATEGORIES = ['emergency', 'plumbing', 'electrical', 'hvac', 'appliance', 'access'];
-
 function TeamPage() {
   const { token, user } = useAuth();
   const { t, tOr } = useLocale();
+  const { active: services, label: serviceLabel } = useServices();
+  // "Other" is for manual sorting, so nobody is auto-assigned to it.
+  const assignableServices = services.filter((s) => !s.is_system);
   const [users, setUsers] = useState<UserRead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -162,7 +164,7 @@ function TeamPage() {
                 </div>
                 {ASSIGNABLE_ROLES.includes(member.role) && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {CATEGORIES.map((category) => {
+                    {assignableServices.map(({ code: category }) => {
                       const active = member.specialties.includes(category);
                       return (
                         <button
@@ -178,7 +180,7 @@ function TeamPage() {
                             color: active ? '#fff' : 'var(--color-text-muted)',
                           }}
                         >
-                          {tOr(`category.${category}`, category)}
+                          {serviceLabel(category)}
                         </button>
                       );
                     })}

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from .auth import get_current_user, hash_password, require_roles
 from .db import get_db
 from .models import User, UserRole
+from .services import active_services
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -112,7 +113,12 @@ def update_user_specialties(
     if target is None or target.organization_id != user.organization_id:
         raise HTTPException(404, "User not found")
 
-    target.specialties = sorted({s.strip() for s in payload.specialties if s.strip()})
+    requested = {s.strip() for s in payload.specialties if s.strip()}
+    known = {s.code for s in active_services(db, user.organization_id)}
+    unknown = requested - known
+    if unknown:
+        raise HTTPException(400, f"Unknown service: {', '.join(sorted(unknown))}")
+    target.specialties = sorted(requested)
     db.commit()
     db.refresh(target)
     return target

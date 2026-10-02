@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { RequireAuth, useAuth } from '../../lib/auth';
 import { apiFetch, ApiError, type DailyReport, type DailyReportSettings } from '../../lib/api';
 import { LOCALES, useLocale } from '../../lib/locale';
+import { useServices } from '../../lib/services';
 import { isAdminRole, isManagerRole } from '../../lib/roles';
 import { PRIORITY_KEYS, STATUS_KEYS, priorityBadgeStyle, statusBadgeStyle } from '../../lib/ui';
 
@@ -350,7 +351,8 @@ function todayIct(): string {
 
 function ReportView() {
   const { token, user } = useAuth();
-  const { t, tOr, formatDate } = useLocale();
+  const { t, formatDate } = useLocale();
+  const { label: serviceLabel } = useServices();
   const [date, setDate] = useState<string>(() => shiftDate(todayIct(), -1));
   const [report, setReport] = useState<DailyReport | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -454,7 +456,7 @@ function ReportView() {
               ) : (
                 report.tickets_created_by_category.map((row) => (
                   <div key={row.category} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0' }}>
-                    <span style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>{tOr(`category.${row.category}`, row.category)}</span>
+                    <span style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>{serviceLabel(row.category)}</span>
                     <span style={{ fontWeight: 700, fontSize: 14 }}>{row.count}</span>
                   </div>
                 ))
@@ -475,7 +477,7 @@ function ReportView() {
                   >
                     <div>
                       <div style={{ fontWeight: 600, fontSize: 14 }}>{ticket.title}</div>
-                      <div style={{ fontSize: 12, color: 'var(--color-text-subtle)', marginTop: 3 }}>{tOr(`category.${ticket.category}`, ticket.category)}</div>
+                      <div style={{ fontSize: 12, color: 'var(--color-text-subtle)', marginTop: 3 }}>{serviceLabel(ticket.category)}</div>
                     </div>
                     <span className="badge" style={priorityBadgeStyle(ticket.priority)}>
                       {t(PRIORITY_KEYS[ticket.priority])}

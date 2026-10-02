@@ -19,6 +19,7 @@ import {
 } from '../../lib/api';
 import type { MessageKey } from '../../lib/i18n/en';
 import { useLocale } from '../../lib/locale';
+import { useServices } from '../../lib/services';
 import { isManagerRole } from '../../lib/roles';
 import { PRIORITY_KEYS, STATUS_KEYS, priorityBadgeStyle, statusBadgeStyle } from '../../lib/ui';
 
@@ -71,6 +72,9 @@ function TicketDetail() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
+  const { services, label: serviceLabel } = useServices();
+  // Active services, plus the ticket's current one even if it has since been archived.
+  const serviceOptions = services.filter((s) => !s.archived || s.code === category);
   const [priority, setPriority] = useState<TicketPriority>('medium');
   const [assigneeId, setAssigneeId] = useState('');
 
@@ -233,7 +237,14 @@ function TicketDetail() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 <label className="field">
                   {t('ticket.category')}
-                  <input value={category} onChange={(e) => setCategory(e.target.value)} className="input" />
+                  <select value={category} onChange={(e) => setCategory(e.target.value)} className="select">
+                    {!serviceOptions.some((s) => s.code === category) && category && <option value={category}>{serviceLabel(category)}</option>}
+                    {serviceOptions.map((s) => (
+                      <option key={s.code} value={s.code}>
+                        {serviceLabel(s.code)}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label className="field">
                   {t('ticket.priority')}

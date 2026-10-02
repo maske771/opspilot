@@ -9,6 +9,7 @@ from .ai_response import detect_language, generate_greeting, get_response_genera
 from .assignment import find_assignee_for_category
 from .customer_match import find_customer, normalize_email, normalize_phone
 from .models import Conversation, Customer, CustomerIdentity, Message, MessageAttachment, Organization, Ticket, TicketStatus
+from .services import intake_rules
 from .sla import calculate_sla
 
 @dataclass(frozen=True)
@@ -145,8 +146,9 @@ def ingest_normalized_event(db: Session, organization_id, channel, event: Normal
 
     ticket = db.scalar(select(Ticket).where(Ticket.organization_id == organization_id, Ticket.conversation_id == conversation.id, Ticket.status != TicketStatus.CLOSED).order_by(Ticket.created_at.desc()))
     ticket_created = False
-    if ticket is None and (has_media or is_actionable_request(event.text)):
-        intake = classify(event.text or "photo")
+    rules, fallback_priority = intake_rules(db, organization_id)
+    if ticket is None and (has_media or is_actionable_request(event.text, rules)):
+        intake = classify(event.text or "photo", rules, fallback_priority)
         description = event.text.strip() or "Customer sent a photo."
         ticket = Ticket(organization_id=organization_id, customer_id=customer.id, conversation_id=conversation.id, title=display_text[:255], description=description, category=intake.category, priority=intake.priority, status=TicketStatus.NEW)
         db.add(ticket); db.flush()
