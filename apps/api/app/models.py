@@ -108,6 +108,20 @@ class Property(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class PropertyService(Base):
+    """A service offered at a property, with optional SLA overrides for that pair keyed by priority:
+    {"<priority>": {"response_minutes": int, "resolution_minutes": int}}. A property with no rows
+    at all hasn't been configured yet and is treated as offering every service."""
+
+    __tablename__ = "property_services"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"))
+    property_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("properties.id", ondelete="CASCADE"), index=True)
+    service_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("services.id", ondelete="CASCADE"))
+    sla: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    __table_args__ = (UniqueConstraint("property_id", "service_id", name="uq_property_services"),)
+
+
 class Unit(Base):
     __tablename__ = "units"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

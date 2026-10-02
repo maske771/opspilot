@@ -401,6 +401,16 @@ export const en = {
   'services.loadFailed': 'Could not load services',
   'services.addTitle': 'New service',
   'services.add': 'Add service',
+
+  'properties.servicesLink': 'Services & SLA',
+  'propertyServices.subtitle': 'Which services this property gets, and its SLA per service and priority. Leave a field empty to inherit the organization SLA (Settings) or the built-in default.',
+  'propertyServices.notConfigured': 'Not set up yet: every service is offered here with the organization SLA. Untick what this property doesn’t get and save to lock the list in.',
+  'propertyServices.fromOrganization': 'from organization settings',
+  'propertyServices.fromDefault': 'built-in default',
+  'propertyServices.pairIncomplete': 'Fill in both response and resolution for a priority, or leave both empty to inherit.',
+  'propertyServices.saved': 'Saved.',
+  'propertyServices.saveFailed': 'Could not save',
+  'propertyServices.loadFailed': 'Could not load the property’s services',
 };
 
 export type Messages = typeof en;

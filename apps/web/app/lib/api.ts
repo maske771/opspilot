@@ -221,6 +221,23 @@ export type ServiceRead = {
   position: number;
 };
 
+export type SlaPair = { response_minutes: number; resolution_minutes: number };
+
+export type PropertyServiceRead = {
+  service_id: string;
+  code: string;
+  names: Record<string, string>;
+  is_system: boolean;
+  enabled: boolean;
+  sla: (SlaPair & { priority: TicketPriority; source: 'property' | 'organization' | 'default' })[];
+  overrides: Partial<Record<TicketPriority, SlaPair>>;
+};
+
+export type PropertyServicesRead = {
+  configured: boolean;
+  services: PropertyServiceRead[];
+};
+
 export type EffectiveSla = {
   priority: TicketPriority;
   response_minutes: number;

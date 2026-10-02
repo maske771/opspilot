@@ -8,8 +8,8 @@ from .ai_intake import classify, is_actionable_request
 from .ai_response import detect_language, generate_greeting, get_response_generator
 from .assignment import find_assignee_for_category
 from .customer_match import find_customer, normalize_email, normalize_phone
-from .models import Conversation, Customer, CustomerIdentity, Message, MessageAttachment, Organization, Ticket, TicketStatus
-from .services import intake_rules
+from .models import Conversation, Customer, CustomerIdentity, Message, MessageAttachment, Ticket, TicketStatus
+from .services import intake_rules, sla_overrides_for
 from .sla import calculate_sla
 
 @dataclass(frozen=True)
@@ -152,8 +152,8 @@ def ingest_normalized_event(db: Session, organization_id, channel, event: Normal
         description = event.text.strip() or "Customer sent a photo."
         ticket = Ticket(organization_id=organization_id, customer_id=customer.id, conversation_id=conversation.id, title=display_text[:255], description=description, category=intake.category, priority=intake.priority, status=TicketStatus.NEW)
         db.add(ticket); db.flush()
-        org = db.get(Organization, organization_id)
-        ticket.response_deadline, ticket.resolution_deadline = calculate_sla(ticket.priority, ticket.created_at, org.sla_overrides if org else None)
+        overrides = sla_overrides_for(db, organization_id, ticket.property_id, ticket.category)
+        ticket.response_deadline, ticket.resolution_deadline = calculate_sla(ticket.priority, ticket.created_at, overrides)
         assignee = find_assignee_for_category(db, organization_id, ticket.category)
         if assignee is not None:
             ticket.assignee_id = assignee.id

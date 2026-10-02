@@ -403,4 +403,14 @@ export const ru: Messages = {
   'services.loadFailed': 'Не удалось загрузить услуги',
   'services.addTitle': 'Новая услуга',
   'services.add': 'Добавить услугу',
+
+  'properties.servicesLink': 'Услуги и SLA',
+  'propertyServices.subtitle': 'Какие услуги оказываются на объекте и SLA по каждой услуге и приоритету. Пустое поле — берётся SLA организации (Настройки) или встроенный.',
+  'propertyServices.notConfigured': 'Ещё не настроено: на объекте доступны все услуги с SLA организации. Снимите галочки с того, что здесь не оказывается, и сохраните, чтобы зафиксировать список.',
+  'propertyServices.fromOrganization': 'из настроек организации',
+  'propertyServices.fromDefault': 'встроенный',
+  'propertyServices.pairIncomplete': 'Для приоритета заполните и ответ, и решение — или оставьте оба поля пустыми, чтобы наследовать.',
+  'propertyServices.saved': 'Сохранено.',
+  'propertyServices.saveFailed': 'Не удалось сохранить',
+  'propertyServices.loadFailed': 'Не удалось загрузить услуги объекта',
 };

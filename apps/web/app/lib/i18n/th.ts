@@ -403,4 +403,14 @@ export const th: Messages = {
   'services.loadFailed': 'โหลดบริการไม่สำเร็จ',
   'services.addTitle': 'บริการใหม่',
   'services.add': 'เพิ่มบริการ',
+
+  'properties.servicesLink': 'บริการและ SLA',
+  'propertyServices.subtitle': 'บริการที่ให้ในอสังหาริมทรัพย์นี้ และ SLA ตามบริการและระดับความสำคัญ เว้นว่างไว้เพื่อใช้ SLA ขององค์กร (การตั้งค่า) หรือค่าเริ่มต้น',
+  'propertyServices.notConfigured': 'ยังไม่ได้ตั้งค่า: อสังหาริมทรัพย์นี้มีทุกบริการพร้อม SLA ขององค์กร เอาเครื่องหมายออกจากบริการที่ไม่ได้ให้ที่นี่ แล้วบันทึกเพื่อยืนยันรายการ',
+  'propertyServices.fromOrganization': 'จากการตั้งค่าองค์กร',
+  'propertyServices.fromDefault': 'ค่าเริ่มต้น',
+  'propertyServices.pairIncomplete': 'กรอกทั้งเวลาตอบกลับและเวลาแก้ไขสำหรับระดับความสำคัญนั้น หรือเว้นว่างทั้งคู่เพื่อใช้ค่าที่สืบทอด',
+  'propertyServices.saved': 'บันทึกแล้ว',
+  'propertyServices.saveFailed': 'บันทึกไม่สำเร็จ',
+  'propertyServices.loadFailed': 'โหลดบริการของอสังหาริมทรัพย์ไม่สำเร็จ',
 };

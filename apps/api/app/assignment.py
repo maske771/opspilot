@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import func, select
+from sqlalchemy import any_, func, select
 from sqlalchemy.orm import Session
 
 from .models import Ticket, TicketStatus, User, UserRole
@@ -19,7 +19,7 @@ def find_assignee_for_category(db: Session, organization_id: uuid.UUID, category
             select(User).where(
                 User.organization_id == organization_id,
                 User.role.in_(ASSIGNABLE_ROLES),
-                User.specialties.any(category),
+                any_(User.specialties) == category,
             )
         ).all()
     )

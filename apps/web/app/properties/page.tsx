@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { RequireAuth, useAuth } from '../lib/auth';
 import { apiFetch, ApiError, type PropertyRead, type UnitRead } from '../lib/api';
+import Link from 'next/link';
 import { useLocale } from '../lib/locale';
+import { isAdminRole } from '../lib/roles';
 
 function PropertiesList() {
   const { token, user } = useAuth();
@@ -142,6 +144,11 @@ function PropertiesList() {
                 </button>
                 {expanded === property.id && (
                   <div style={{ borderTop: '1px solid var(--color-border-subtle)', padding: 16 }}>
+                    {isAdminRole(user?.role) && (
+                      <Link href={`/properties/${property.id}`} style={{ display: 'inline-block', fontSize: 13.5, color: 'var(--color-accent-text)', marginBottom: 12 }}>
+                        {t('properties.servicesLink')} →
+                      </Link>
+                    )}
                     {(units[property.id] ?? []).length === 0 ? (
                       <p style={{ fontSize: 13, color: 'var(--color-text-subtle)', margin: '0 0 12px' }}>{t('properties.noUnits')}</p>
                     ) : (

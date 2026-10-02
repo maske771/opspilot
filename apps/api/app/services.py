@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from .ai_intake import DEFAULT_RULES, FALLBACK_CODE, ServiceRule
-from .models import Service, TicketPriority, User
+from .models import Organization, PropertyService, Service, TicketPriority, User
 
 DEFAULT_NAMES = {
     "emergency": {"en": "Emergency", "ru": "Авария", "th": "เหตุฉุกเฉิน"},
@@ -68,6 +68,21 @@ def intake_rules(db: Session, organization_id: uuid.UUID) -> tuple[list[ServiceR
     rules = [ServiceRule(s.code, tuple(s.keywords or ()), s.default_priority) for s in services if not s.is_system]
     fallback = next((s for s in services if s.code == FALLBACK_CODE), None)
     return rules, fallback.default_priority if fallback else TicketPriority.MEDIUM
+
+
+def sla_overrides_for(db: Session, organization_id: uuid.UUID, property_id: uuid.UUID | None, service_code: str) -> dict:
+    """SLA overrides for a ticket, per priority: the property+service setting wins, then the
+    organization's, then (in sla.calculate_sla) the built-in default."""
+    org = db.get(Organization, organization_id)
+    merged = dict((org.sla_overrides if org else None) or {})
+    if property_id is not None:
+        property_sla = db.scalar(
+            select(PropertyService.sla)
+            .join(Service, Service.id == PropertyService.service_id)
+            .where(PropertyService.property_id == property_id, Service.organization_id == organization_id, Service.code == service_code)
+        )
+        merged.update(property_sla or {})
+    return merged
 
 
 def new_service_code() -> str:

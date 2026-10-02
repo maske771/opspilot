@@ -13,7 +13,7 @@ export function invalidateServices() {
   cache = null;
 }
 
-export function serviceName(service: ServiceRead | undefined, locale: string, fallback: string): string {
+export function serviceName(service: { names: Record<string, string> } | undefined, locale: string, fallback: string): string {
   if (!service) return fallback;
   return service.names[locale] || service.names.en || Object.values(service.names)[0] || fallback;
 }
