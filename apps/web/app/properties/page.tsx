@@ -5,7 +5,7 @@ import { RequireAuth, useAuth } from '../lib/auth';
 import { apiFetch, ApiError, type PropertyRead, type UnitRead } from '../lib/api';
 import Link from 'next/link';
 import { useLocale } from '../lib/locale';
-import { isAdminRole } from '../lib/roles';
+import { isAdminRole, isManagerRole } from '../lib/roles';
 
 function PropertiesList() {
   const { token, user } = useAuth();
@@ -55,6 +55,16 @@ function PropertiesList() {
       setError(err instanceof ApiError ? err.message : t('properties.createFailed'));
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function regenerateCode(propertyId: string) {
+    if (!token || !window.confirm(t('properties.regenerateConfirm'))) return;
+    try {
+      const updated = await apiFetch<PropertyRead>(`/properties/${propertyId}/regenerate-code`, { method: 'POST', token });
+      setProperties((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('properties.createFailed'));
     }
   }
 
@@ -133,7 +143,12 @@ function PropertiesList() {
                   }}
                 >
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: 14.5 }}>{property.name}</div>
+                    <div style={{ fontWeight: 600, fontSize: 14.5, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {property.name}
+                      <span className="badge" title={t('properties.codeHint')} style={{ background: 'var(--color-accent-soft)', color: 'var(--color-accent-text)', fontFamily: 'monospace', letterSpacing: '0.08em' }}>
+                        {property.code}
+                      </span>
+                    </div>
                     {property.address && (
                       <div style={{ fontSize: 12.5, color: 'var(--color-text-subtle)', marginTop: 4 }}>{property.address}</div>
                     )}
@@ -144,11 +159,21 @@ function PropertiesList() {
                 </button>
                 {expanded === property.id && (
                   <div style={{ borderTop: '1px solid var(--color-border-subtle)', padding: 16 }}>
-                    {isAdminRole(user?.role) && (
-                      <Link href={`/properties/${property.id}`} style={{ display: 'inline-block', fontSize: 13.5, color: 'var(--color-accent-text)', marginBottom: 12 }}>
-                        {t('properties.servicesLink')} →
-                      </Link>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 12, fontSize: 13 }}>
+                      <span style={{ color: 'var(--color-text-muted)' }}>
+                        {t('properties.codeLabel')}: <strong style={{ fontFamily: 'monospace', letterSpacing: '0.08em', color: 'var(--color-text)' }}>{property.code}</strong>
+                      </span>
+                      {isManagerRole(user?.role) && (
+                        <button type="button" className="btn btn-secondary" style={{ fontSize: 12.5, padding: '5px 10px' }} onClick={() => regenerateCode(property.id)}>
+                          {t('properties.regenerateCode')}
+                        </button>
+                      )}
+                      {isAdminRole(user?.role) && (
+                        <Link href={`/properties/${property.id}`} style={{ fontSize: 13.5, color: 'var(--color-accent-text)' }}>
+                          {t('properties.servicesLink')} →
+                        </Link>
+                      )}
+                    </div>
                     {(units[property.id] ?? []).length === 0 ? (
                       <p style={{ fontSize: 13, color: 'var(--color-text-subtle)', margin: '0 0 12px' }}>{t('properties.noUnits')}</p>
                     ) : (

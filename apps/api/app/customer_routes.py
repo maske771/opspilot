@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from .auth import get_current_user, require_roles
 from .db import get_db
-from .models import Customer, User
+from .models import Customer, Property, Unit, User, UserRole
 
 router = APIRouter(prefix="/customers", tags=["customers"])
 
@@ -23,6 +23,8 @@ class CustomerUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     phone: str | None = None
     email: str | None = None
+    property_id: uuid.UUID | None = None
+    unit_id: uuid.UUID | None = None
 
 
 class CustomerRead(BaseModel):
@@ -32,6 +34,11 @@ class CustomerRead(BaseModel):
     name: str | None
     phone: str | None
     email: str | None
+    property_id: uuid.UUID | None
+    unit_id: uuid.UUID | None
+
+
+LINK_ROLES = (UserRole.OWNER, UserRole.ADMIN, UserRole.MANAGER)
 
 
 @router.get("", response_model=list[CustomerRead])
@@ -68,7 +75,23 @@ def update_customer(customer_id: uuid.UUID, payload: CustomerUpdate, user: User 
     customer = db.get(Customer, customer_id)
     if customer is None or customer.organization_id != user.organization_id:
         raise HTTPException(404, "Customer not found")
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    changes = payload.model_dump(exclude_unset=True)
+    if "property_id" in changes or "unit_id" in changes:
+        # The bot links a customer once on first contact; after that only managers change it.
+        if user.role not in LINK_ROLES:
+            raise HTTPException(403, "Only owner, admin or manager can change a customer's property")
+        property_id = changes.get("property_id", customer.property_id)
+        unit_id = changes.get("unit_id", customer.unit_id if "property_id" not in changes else None)
+        if property_id is not None:
+            prop = db.get(Property, property_id)
+            if prop is None or prop.organization_id != user.organization_id:
+                raise HTTPException(400, "Property not found")
+        if unit_id is not None:
+            unit = db.get(Unit, unit_id)
+            if unit is None or unit.organization_id != user.organization_id or unit.property_id != property_id:
+                raise HTTPException(400, "Unit does not belong to the property")
+        changes["property_id"], changes["unit_id"] = property_id, unit_id
+    for field, value in changes.items():
         setattr(customer, field, value)
     db.commit()
     db.refresh(customer)

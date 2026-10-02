@@ -8,6 +8,7 @@ import {
   ApiError,
   type ChannelRead,
   type OrganizationRead,
+  type PropertyRead,
   type SlaDefault,
   type TicketRead,
   type UserRole,
@@ -114,6 +115,7 @@ function OnboardingWizard() {
 
   // test
   const [testStartedAt, setTestStartedAt] = useState<string | null>(null);
+  const [testPropertyCode, setTestPropertyCode] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const [testOutcome, setTestOutcome] = useState<'pending' | 'ok' | 'none'>('pending');
 
@@ -145,6 +147,12 @@ function OnboardingWizard() {
     }
     if (STEP_KEYS[stepIndex] === 'test' && testStartedAt === null) {
       setTestStartedAt(new Date().toISOString());
+    }
+    if (STEP_KEYS[stepIndex] === 'test' && token) {
+      // With a property, a new customer is first asked for its code before the request becomes a ticket.
+      apiFetch<PropertyRead[]>('/properties', { token })
+        .then((list) => setTestPropertyCode(list[0]?.code ?? null))
+        .catch(() => undefined);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stepIndex, token]);
@@ -459,6 +467,11 @@ function OnboardingWizard() {
         >
           {channelConnected && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {testPropertyCode && (
+                <div style={{ padding: 12, borderRadius: 10, background: 'var(--color-accent-soft)', color: 'var(--color-accent-text)', fontSize: 13 }}>
+                  {t('onboarding.test.codeHint', { code: testPropertyCode })}
+                </div>
+              )}
               <button type="button" className="btn btn-secondary" style={{ alignSelf: 'flex-start' }} disabled={checking} onClick={checkForTestTicket}>
                 {checking ? t('onboarding.test.checking') : t('onboarding.test.check')}
               </button>

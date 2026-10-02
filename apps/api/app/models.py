@@ -19,6 +19,17 @@ def new_webhook_token() -> str:
     return secrets.token_urlsafe(32)
 
 
+PROPERTY_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no 0/O or 1/I — residents type these by hand
+
+
+def new_property_code() -> str:
+    return "".join(secrets.choice(PROPERTY_CODE_ALPHABET) for _ in range(6))
+
+
+def normalize_property_code(value: str) -> str:
+    return "".join(ch for ch in value.upper() if ch.isalnum())
+
+
 class UserRole(str, enum.Enum):
     OWNER = "owner"
     ADMIN = "admin"
@@ -105,7 +116,9 @@ class Property(Base):
     organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
     name: Mapped[str] = mapped_column(String(255))
     address: Mapped[str | None] = mapped_column(Text())
+    code: Mapped[str] = mapped_column(Text(), default=new_property_code)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    __table_args__ = (UniqueConstraint("organization_id", "code", name="uq_properties_org_code"),)
 
 
 class PropertyService(Base):
@@ -137,6 +150,8 @@ class Customer(Base):
     name: Mapped[str | None] = mapped_column(String(255))
     phone: Mapped[str | None] = mapped_column(String(50))
     email: Mapped[str | None] = mapped_column(String(320))
+    property_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("properties.id", ondelete="SET NULL"))
+    unit_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("units.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -216,6 +231,8 @@ class Conversation(Base):
     channel_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("channels.id", ondelete="CASCADE"), index=True)
     external_conversation_id: Mapped[str | None] = mapped_column(String(255))
     status: Mapped[str] = mapped_column(String(30), default="open", index=True)
+    pending_step: Mapped[str | None] = mapped_column(Text())  # "property_code" while waiting for the customer's code
+    pending_message_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))  # request to turn into a ticket once linked
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

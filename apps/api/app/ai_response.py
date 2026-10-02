@@ -99,6 +99,27 @@ _GREETING_REPLIES: dict[Language, dict[str, str]] = {
 }
 
 
+_REGISTRATION: dict[Language, dict[str, str]] = {
+    "en": {
+        "ask_code": "Welcome! To get started, please send the property code your property manager gave you. If you don't have one, ask your manager.",
+        "code_not_found": "We couldn't find a property with that code. Please check it and send it again — or ask your property manager for the code.",
+        "linked": "Thanks! You're now registered at {property}.",
+        "linked_how_can_we_help": "Thanks! You're now registered at {property}. How can we help?",
+    },
+    "ru": {
+        "ask_code": "Здравствуйте! Чтобы начать, пришлите, пожалуйста, код объекта, который вам выдал управляющий. Если кода нет — уточните его у управляющего.",
+        "code_not_found": "Не нашли объект с таким кодом. Проверьте код и пришлите его ещё раз — или уточните его у управляющего.",
+        "linked": "Спасибо! Вы зарегистрированы на объекте {property}.",
+        "linked_how_can_we_help": "Спасибо! Вы зарегистрированы на объекте {property}. Чем можем помочь?",
+    },
+}
+
+
+def registration_text(kind: str, language: Language = "en", **values: str) -> str:
+    texts = _REGISTRATION.get(language, _REGISTRATION["en"])
+    return texts[kind].format(**values)
+
+
 def generate_greeting(*, customer_message: str, language: Language = "en") -> GeneratedResponse:
     language = language if language in _GREETING_REPLIES else "en"
     kind = "thanks" if any(word in customer_message.lower() for word in _THANKS_WORDS) else "hello"

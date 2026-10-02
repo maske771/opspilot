@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from .auth import get_current_user, require_roles
 from .db import get_db
-from .models import Property, User
+from .models import Property, User, new_property_code
 
 router = APIRouter(prefix="/properties", tags=["properties"])
 
@@ -29,6 +29,7 @@ class PropertyRead(BaseModel):
     organization_id: uuid.UUID
     name: str
     address: str | None
+    code: str  # handed to residents; the bot asks for it to link a new customer to this property
 
 
 @router.get("", response_model=list[PropertyRead])
@@ -62,6 +63,18 @@ def update_property(property_id: uuid.UUID, payload: PropertyUpdate, user: User 
         raise HTTPException(404, "Property not found")
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(item, field, value)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+@router.post("/{property_id}/regenerate-code", response_model=PropertyRead)
+def regenerate_property_code(property_id: uuid.UUID, user: User = Depends(require_roles("owner", "admin", "manager")), db: Session = Depends(get_db)):
+    """New code, e.g. after the old one leaked. Already-linked customers stay linked."""
+    item = db.get(Property, property_id)
+    if item is None or item.organization_id != user.organization_id:
+        raise HTTPException(404, "Property not found")
+    item.code = new_property_code()
     db.commit()
     db.refresh(item)
     return item

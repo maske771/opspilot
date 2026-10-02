@@ -98,6 +98,7 @@ export type PropertyRead = {
   organization_id: string;
   name: string;
   address: string | null;
+  code: string;
 };
 
 export type UnitRead = {
@@ -113,6 +114,8 @@ export type CustomerRead = {
   name: string | null;
   phone: string | null;
   email: string | null;
+  property_id: string | null;
+  unit_id: string | null;
 };
 
 export type ChannelType = 'telegram' | 'line' | 'whatsapp' | 'email';

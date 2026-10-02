@@ -61,10 +61,15 @@ def active_services(db: Session, organization_id: uuid.UUID) -> list[Service]:
     )
 
 
-def intake_rules(db: Session, organization_id: uuid.UUID) -> tuple[list[ServiceRule], TicketPriority]:
+def intake_rules(db: Session, organization_id: uuid.UUID, property_id: uuid.UUID | None = None) -> tuple[list[ServiceRule], TicketPriority]:
     """Keyword rules for the classifier, plus the priority to use when nothing matches (the
-    fallback service's own default priority)."""
+    fallback service's own default priority). With a configured property, only the services that
+    property gets are considered — a request for anything else falls back to manual sorting."""
     services = active_services(db, organization_id)
+    if property_id is not None:
+        offered = set(db.scalars(select(PropertyService.service_id).where(PropertyService.property_id == property_id)))
+        if offered:
+            services = [s for s in services if s.id in offered or s.is_system]
     rules = [ServiceRule(s.code, tuple(s.keywords or ()), s.default_priority) for s in services if not s.is_system]
     fallback = next((s for s in services if s.code == FALLBACK_CODE), None)
     return rules, fallback.default_priority if fallback else TicketPriority.MEDIUM
