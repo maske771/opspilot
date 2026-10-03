@@ -210,7 +210,7 @@ The specification above is kept as written. This section records what has been b
 | 8 | Customer acknowledgement | Built, EN/RU templates; asks for a photo when none was sent. **Thai customers get English.** |
 | 9 | Staff receive the work order in their channel | Built for Telegram (staff link their account from their profile). |
 | 10 | SLA worker | Built: due-soon, overdue and escalation notices. |
-| 11 | Staff complete work with photos/comments | **Partly.** Staff can mark work complete; there are no work logs and no way for staff to attach completion photos. Customer photos from the chat are stored and shown. |
+| 11 | Staff complete work with photos/comments | **Yes.** The ticket's Work log tab takes comments and up to 5 photos per entry; customer photos from the chat are stored and shown too. |
 | 12 | Manager approval for high/critical | Built. |
 | 13 | Daily operations summary | Built: page plus optional Telegram delivery with schedule, timezone, skipped days and a custom template. |
 
@@ -232,10 +232,10 @@ The specification above is kept as written. This section records what has been b
 
 - **Categories → service catalog.** The fixed list in "Initial categories" became a per-organization catalog managed in the UI. It starts with Emergency, Plumbing, Electrical, HVAC, Appliances, Access & keys and Other; Internet/Wi-Fi, Furniture, Cleaning and Security can be added as services.
 - **SLA defaults** match the table above and are configurable per organization and per property+service.
-- **Ticket fields not built:** vendor, work logs, AI analysis, audit history (an audit model exists but nothing writes to it).
+- **Ticket fields not built:** vendor, AI analysis, audit history (an audit model exists but nothing writes to it).
 - **AI** is rule-based throughout; see [`ai-agents.md`](ai-agents.md).
 - **Additions not in the spec:** staff Telegram notifications and escalations, daily-report push delivery, property resident codes, UI in English/Russian/Thai with light and dark themes.
 
 ### Pilot readiness
 
-The pilot lifecycle runs end to end on Telegram, except "optional photo" on completion, which staff can't attach yet (step 11).
+The pilot lifecycle runs end to end on Telegram, including completion comments and photos (step 11).

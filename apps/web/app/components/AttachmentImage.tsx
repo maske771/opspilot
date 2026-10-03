@@ -5,7 +5,7 @@ import { useAuth } from '../lib/auth';
 import { API_BASE } from '../lib/api';
 import { useLocale } from '../lib/locale';
 
-export function AttachmentImage({ id }: { id: string }) {
+export function AttachmentImage({ id, kind = 'message' }: { id: string; kind?: 'message' | 'ticket' }) {
   const { token } = useAuth();
   const { t } = useLocale();
   const [src, setSrc] = useState<string | null>(null);
@@ -15,7 +15,8 @@ export function AttachmentImage({ id }: { id: string }) {
     let objectUrl: string | null = null;
     let cancelled = false;
 
-    fetch(`${API_BASE}/attachments/${id}`, { headers: { Authorization: `Bearer ${token}` } })
+    const base = kind === 'ticket' ? 'ticket-attachments' : 'attachments';
+    fetch(`${API_BASE}/${base}/${id}`, { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => (res.ok ? res.blob() : Promise.reject(new Error('failed'))))
       .then((blob) => {
         if (cancelled) return;
@@ -30,7 +31,7 @@ export function AttachmentImage({ id }: { id: string }) {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [token, id]);
+  }, [token, id, kind]);
 
   if (!src) {
     return (

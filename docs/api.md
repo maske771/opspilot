@@ -150,6 +150,16 @@ Tickets may optionally reference the originating conversation via `conversation_
 
 On creation (both `POST /tickets` and webhook-generated tickets), the auto-assignment engine looks for a `staff`/`technician` user in the organization whose `specialties` include the ticket's `category`, and picks the one with the fewest currently open (non-closed) tickets. If a match is found, the ticket is assigned and moves straight to `assigned`; otherwise it is left unassigned in `new` for manual triage.
 
+### Work log
+
+```text
+GET  /tickets/{id}/notes
+POST /tickets/{id}/notes            multipart/form-data: body (text, optional), photos (0–5 files)
+GET  /ticket-attachments/{id}       image bytes
+```
+
+Any user of the organization can read the log and add entries; executors use it to record what was done and attach before/after photos. An entry needs text or at least one photo (`422` otherwise). Photos must be JPEG, PNG or WebP — detected from the file's bytes, not its name (`415`) — at most 10 MB each (`413`) and 5 per entry (`422`). Body text is capped at 5000 characters. Closed tickets are read-only (`409`). Photos are stored like chat photos (local media volume) and served only to users of the same organization.
+
 ### Manager approval for high/critical closure
 
 `POST /tickets/{id}/complete` on a `high`/`critical` ticket moves it to `waiting_approval` instead of `completed` (per `docs/product-spec.md`'s "high/critical closure requires human approval"), and notifies every `owner`/`admin`/`manager` in the organization once, immediately (`notify_managers_approval_needed`, not the polling SLA monitor). `low`/`medium` tickets complete as before.

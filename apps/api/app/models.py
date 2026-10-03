@@ -187,6 +187,32 @@ class Ticket(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
+class TicketNote(Base):
+    """A work-log entry on a ticket: a comment and/or photos from the staff doing the work."""
+
+    __tablename__ = "ticket_notes"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"))
+    ticket_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tickets.id", ondelete="CASCADE"), index=True)
+    author_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    body: Mapped[str | None] = mapped_column(Text())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    attachments: Mapped[list["TicketNoteAttachment"]] = relationship(back_populates="note", cascade="all, delete-orphan")
+
+
+class TicketNoteAttachment(Base):
+    __tablename__ = "ticket_note_attachments"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"))
+    note_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("ticket_notes.id", ondelete="CASCADE"), index=True)
+    storage_path: Mapped[str] = mapped_column(Text())
+    content_type: Mapped[str] = mapped_column(String(100))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    note: Mapped[TicketNote] = relationship(back_populates="attachments")
+
+
 class TicketNotification(Base):
     """One row per (ticket, recipient, kind): the guarantee that a staff notification goes out once."""
 

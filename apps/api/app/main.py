@@ -29,6 +29,7 @@ from .report_routes import router as report_router
 from .sla_monitor import monitor_enabled, run_forever as run_sla_monitor
 from .property_service_routes import router as property_service_router
 from .service_routes import router as service_router
+from .ticket_note_routes import router as ticket_note_router
 from .sla_routes import router as sla_router
 from .telegram_webhook import register_all_telegram_webhooks
 
@@ -93,6 +94,7 @@ app.include_router(sla_router)
 app.include_router(analytics_router)
 app.include_router(service_router)
 app.include_router(property_service_router)
+app.include_router(ticket_note_router)
 app.include_router(channel_router)
 app.include_router(conversation_router)
 app.include_router(inbox_router)

@@ -56,7 +56,7 @@ Staff receive notifications only after linking their Telegram from their profile
 | Tenancy and people | `organizations`, `users` (roles: owner, admin, manager, staff, technician; `specialties` = service codes) |
 | Catalog and places | `services`, `properties` (with resident `code`), `units`, `property_services` (+ per-priority SLA) |
 | Customers and conversations | `customers` (+ `property_id`, `unit_id`), `customer_identities`, `channels`, `conversations`, `messages`, `message_attachments`, `webhook_events` |
-| Work | `tickets`, `ticket_notifications` |
+| Work | `tickets`, `ticket_notes` + `ticket_note_attachments` (work log), `ticket_notifications` |
 
 Every tenant-owned row carries `organization_id`; every query is scoped to the caller's organization in the API layer. Schema changes are numbered SQL files in `database/migrations`.
 

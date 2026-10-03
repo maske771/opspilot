@@ -41,7 +41,34 @@ export async function apiFetch<T>(path: string, options: FetchOptions = {}): Pro
   return (await response.json()) as T;
 }
 
-export type UserRole = 'owner' | 'admin' | 'manager' | 'staff' | 'technician';
+/** Multipart upload (FormData) — the browser sets the multipart Content-Type boundary itself. */
+export async function apiUpload<T>(path: string, form: FormData, token: string | null): Promise<T> {
+  const headers: Record<string, string> = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const response = await fetch(`${API_BASE}${path}`, { method: 'POST', headers, body: form, cache: 'no-store' });
+  if (!response.ok) {
+    let detail = response.statusText;
+    try {
+      const data = await response.json();
+      detail = typeof data.detail === 'string' ? data.detail : detail;
+    } catch {
+      /* response had no JSON body */
+    }
+    throw new ApiError(response.status, detail);
+  }
+  return (await response.json()) as T;
+}
+
+export type TicketNoteRead = {
+  id: string;
+  author_id: string | null;
+  author_email: string | null;
+  body: string | null;
+  created_at: string;
+  attachments: { id: string; content_type: string }[];
+};
+
+export type UserRole ='owner' | 'admin' | 'manager' | 'staff' | 'technician';
 
 export type UserRead = {
   id: string;

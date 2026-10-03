@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { MessageTimeline } from '../../components/MessageTimeline';
 import { ReplyBox } from '../../components/ReplyBox';
+import { WorkLog } from '../../components/WorkLog';
 import { Tabs, type TabDef } from '../../components/Tabs';
 import { RequireAuth, useAuth } from '../../lib/auth';
 import {
@@ -12,6 +13,7 @@ import {
   type CustomerRead,
   type MessageRead,
   type PropertyRead,
+  type TicketNoteRead,
   type TicketPriority,
   type TicketRead,
   type TicketStatus,
@@ -51,6 +53,12 @@ const AVAILABLE_ACTIONS: Record<TicketStatus, { action: string; label: MessageKe
   closed: [],
 };
 
+type TicketTab = 'details' | 'conversation' | 'worklog';
+
+function parseTab(value: string | null): TicketTab {
+  return value === 'conversation' || value === 'worklog' ? value : 'details';
+}
+
 function TicketDetail() {
   const { token, user } = useAuth();
   const { t, tOr, formatDateTime } = useLocale();
@@ -58,13 +66,14 @@ function TicketDetail() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const ticketId = params.id;
-  const [tab, setTab] = useState<'details' | 'conversation'>(searchParams.get('tab') === 'conversation' ? 'conversation' : 'details');
+  const [tab, setTab] = useState<TicketTab>(parseTab(searchParams.get('tab')));
 
   const [ticket, setTicket] = useState<TicketRead | null>(null);
   const [users, setUsers] = useState<UserRead[]>([]);
   const [properties, setProperties] = useState<PropertyRead[]>([]);
   const [customers, setCustomers] = useState<CustomerRead[]>([]);
   const [messages, setMessages] = useState<MessageRead[]>([]);
+  const [notes, setNotes] = useState<TicketNoteRead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -87,12 +96,14 @@ function TicketDetail() {
       apiFetch<UserRead[]>('/users', { token }),
       apiFetch<PropertyRead[]>('/properties', { token }),
       apiFetch<CustomerRead[]>('/customers', { token }),
+      apiFetch<TicketNoteRead[]>(`/tickets/${ticketId}/notes`, { token }),
     ])
-      .then(([tk, u, p, c]) => {
+      .then(([tk, u, p, c, n]) => {
         setTicket(tk);
         setUsers(u);
         setProperties(p);
         setCustomers(c);
+        setNotes(n);
         setTitle(tk.title);
         setDescription(tk.description);
         setCategory(tk.category);
@@ -151,11 +162,11 @@ function TicketDetail() {
   }
 
   function selectTab(next: string) {
-    const value = next === 'conversation' ? 'conversation' : 'details';
+    const value = parseTab(next);
     setTab(value);
     // A pure client-side switch: replaceState keeps the URL shareable without a server round-trip
     // (router.replace on a dynamic route would refetch the page for every click).
-    window.history.replaceState(null, '', value === 'details' ? `/tickets/${ticketId}` : `/tickets/${ticketId}?tab=conversation`);
+    window.history.replaceState(null, '', value === 'details' ? `/tickets/${ticketId}` : `/tickets/${ticketId}?tab=${value}`);
   }
 
   const property = properties.find((p) => p.id === ticket?.property_id);
@@ -163,10 +174,11 @@ function TicketDetail() {
   const assignee = users.find((u) => u.id === ticket?.assignee_id);
 
   const hasConversation = Boolean(ticket?.conversation_id);
-  const activeTab = hasConversation ? tab : 'details';
+  const activeTab = tab === 'conversation' && !hasConversation ? 'details' : tab;
   const tabs: TabDef[] = [
     { id: 'details', label: t('ticket.tabDetails') },
     ...(hasConversation ? [{ id: 'conversation', label: t('ticket.conversation'), count: messages.length }] : []),
+    { id: 'worklog', label: t('worklog.tab'), count: notes.length },
   ];
 
   // Closing a high/critical ticket is manager-only server-side; hide the button for everyone else
@@ -302,6 +314,17 @@ function TicketDetail() {
                 <ReplyBox
                   conversationId={ticket.conversation_id}
                   onSent={(message) => setMessages((prev) => [...prev, message])}
+                />
+              </div>
+            )}
+
+            {activeTab === 'worklog' && (
+              <div role="tabpanel" id="ticket-panel-worklog" aria-labelledby="ticket-tab-worklog" className="card card-pad">
+                <WorkLog
+                  ticketId={ticket.id}
+                  notes={notes}
+                  closed={ticket.status === 'closed'}
+                  onAdded={(note) => setNotes((prev) => [...prev, note])}
                 />
               </div>
             )}
