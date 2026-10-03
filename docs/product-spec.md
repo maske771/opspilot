@@ -189,3 +189,53 @@ A real pilot customer must be able to complete the full lifecycle:
 Customer message -> normalized event -> customer match -> ticket -> assignment -> staff notification -> SLA tracking -> completion -> optional photo -> manager approval -> closure -> management report.
 
 Target: 3 pilot customers before expanding scope.
+
+---
+
+## Implementation status (as of 2026-10-03)
+
+The specification above is kept as written. This section records what has been built, what was built differently, and what is still missing. Architecture details: [`architecture.md`](architecture.md); API: [`api.md`](api.md).
+
+### MVP workflow
+
+| # | Step | Status |
+|---|---|---|
+| 1 | Request through LINE, WhatsApp, Telegram or Email | Built for all four. **Only Telegram has been tested with a real account.** |
+| 2 | Adapter validates and normalizes | Built. Webhooks authenticate per channel; raw events stored for idempotency. |
+| 3 | Customer identity matched or created | Built. New: on first contact the bot asks for a **property code** and links the customer to that property; afterwards only managers change it. |
+| 4 | AI intake: intent, category, location, language, priority | Rule-based, no LLM: keywords from a configurable **service catalog**; language detection is EN/RU only. Location comes from the customer's property link, not from the message text. |
+| 5 | Deterministic priority and SLA | Built. Priority from the service; SLA per priority resolved as property+service → organization → built-in defaults. |
+| 6 | Ticket created or updated | Built. Further messages while a ticket is open are added to it. |
+| 7 | Assignment to staff or vendor | Staff/technicians linked to services, least-loaded wins. **Vendors are not modeled.** |
+| 8 | Customer acknowledgement | Built, EN/RU templates; asks for a photo when none was sent. **Thai customers get English.** |
+| 9 | Staff receive the work order in their channel | Built for Telegram (staff link their account from their profile). |
+| 10 | SLA worker | Built: due-soon, overdue and escalation notices. |
+| 11 | Staff complete work with photos/comments | **Partly.** Staff can mark work complete; there are no work logs and no way for staff to attach completion photos. Customer photos from the chat are stored and shown. |
+| 12 | Manager approval for high/critical | Built. |
+| 13 | Daily operations summary | Built: page plus optional Telegram delivery with schedule, timezone, skipped days and a custom template. |
+
+### Screens
+
+| Spec | Status |
+|---|---|
+| Onboarding (10 screens) | One 7-step wizard: company, channel, property, team, SLA (view only), test request, go live. **CSV/XLSX import not built.** |
+| Dashboard | Built: totals and breakdowns. "Recent requests" and "AI insights" are not on it; recent requests live in the Inbox. |
+| Unified Inbox | Built, one row per conversation. Customers with identities in several channels are matched to one customer, but the Inbox doesn't merge their conversations into one view. |
+| Tickets, ticket detail | Built (timeline, photos, manual replies signed with the staff member's name). |
+| Properties | Built, plus units, resident code, and per-property services and SLA. |
+| Team | Built, plus executor ↔ service links. |
+| Channels | Built: connect, credentials, token rotation, Telegram webhook registration. No health checks. |
+| Analytics | Built: volume, response/resolution SLA compliance, breakdowns by service/property/staff. |
+| Settings | Built: company name, organization SLA. Services have their own screen. |
+
+### Other differences from the spec
+
+- **Categories → service catalog.** The fixed list in "Initial categories" became a per-organization catalog managed in the UI. It starts with Emergency, Plumbing, Electrical, HVAC, Appliances, Access & keys and Other; Internet/Wi-Fi, Furniture, Cleaning and Security can be added as services.
+- **SLA defaults** match the table above and are configurable per organization and per property+service.
+- **Ticket fields not built:** vendor, work logs, AI analysis, audit history (an audit model exists but nothing writes to it).
+- **AI** is rule-based throughout; see [`ai-agents.md`](ai-agents.md).
+- **Additions not in the spec:** staff Telegram notifications and escalations, daily-report push delivery, property resident codes, UI in English/Russian/Thai with light and dark themes.
+
+### Pilot readiness
+
+The pilot lifecycle runs end to end on Telegram, except "optional photo" on completion, which staff can't attach yet (step 11).

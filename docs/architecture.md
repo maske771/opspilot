@@ -1,121 +1,92 @@
-# Architecture — MVP v0.1
+# Architecture
 
-## High-level flow
+How OpsPilot is built today, and where it still differs from the target design the MVP started from. The API contract is in [`api.md`](api.md); this document is about structure and flow.
 
-```text
-LINE / WhatsApp / Telegram / Email
-              |
-       Channel Adapters
-              |
-       Normalize Event
-              |
-             Queue
-              |
-       Customer Identity
-              |
-          AI Intake
-              |
-      Deterministic Rules
-        /      |       \
-   Priority  Assignment  SLA
-        \      |       /
-             Ticket
-              |
-       Notifications
-              |
-          Staff/Vendor
-              |
-       Completion + Media
-              |
-       AI advisory check
-              |
-        Close / Approve
-              |
-          Analytics
-```
-
-## Application layers
-
-### Web
-
-Next.js application containing onboarding, dashboard, unified inbox, tickets, properties, team, channels and analytics.
-
-### API
-
-FastAPI service responsible for authentication, authorization, tenant scoping, CRUD APIs, webhook intake, ticket workflows and integration with background jobs.
-
-### Database
-
-PostgreSQL. Every tenant-owned record is scoped by `organization_id` and access is enforced in application/service/repository layers. Database-level row-level security can be added before production if appropriate for the hosting model.
-
-### Workers
-
-Asynchronous workers process inbound events, AI jobs, notifications, SLA timers and daily analytics. Webhooks should acknowledge quickly and enqueue work instead of waiting for AI processing.
-
-### AI service
-
-AI is exposed through internal typed contracts. Agents do not directly mutate critical business state; they produce structured proposals that deterministic services validate and apply.
-
-## Channel adapter abstraction
-
-All channels normalize into a common internal event model:
+## Components
 
 ```text
-InboundEvent
-- organization_id
-- channel_type
-- channel_account_id
-- external_event_id
-- external_message_id
-- external_user_id
-- conversation_key
-- message_type
-- text
-- media[]
-- source_timestamp
-- raw_metadata
+                    ┌──────────── Caddy (TLS) ────────────┐
+                    │                                      │
+   Browser ──────▶  web (Next.js)          api (FastAPI) ◀── messenger webhooks
+                                               │   │
+                                               │   ├─ in-process jobs: SLA monitor, daily report scheduler
+                                               │   └─ outbound: Telegram / LINE / WhatsApp / SMTP
+                                               ▼
+                                        PostgreSQL 17  ◀── postgres-exporter
+                                               │
+                            media volume (/media, customer photos)
+
+   Prometheus ◀── api /metrics, cAdvisor, postgres-exporter ──▶ Alertmanager → Telegram
+   Grafana ── dashboards over Prometheus
 ```
 
-Outbound messages use a common interface:
+Everything runs as Docker Compose services on one VPS (`docker-compose.prod.yml`).
 
-```text
-send_message(channel_account, recipient, message)
-```
+## Inbound message pipeline
 
-Each adapter handles provider-specific authentication, webhook verification, rate limits and payload formats.
+All of this happens synchronously inside the webhook request (`webhook_routes.py` → `webhook_service.py`):
 
-## Identity model
+1. **Authenticate** the webhook against the target channel: per-channel token (query or header), Telegram's secret-token header, or an HMAC signature (`webhook_auth.py`).
+2. **Persist** the raw event in `webhook_events`; a repeated provider event id is ignored (idempotency).
+3. **Normalize** the provider payload into a common event (text, sender, conversation, optional photo).
+4. **Match or create the customer** (`customer_match.py`) via `customer_identities` (one customer can have identities in several channels). Display names are never used to merge customers.
+5. **Staff commands** (`/link CODE`, `/start CODE`) are handled separately (`staff_link.py`) and never create customer conversations.
+6. **Registration**: if the organization has properties, the customer isn't linked to one, and there's no open ticket in the conversation, the bot asks for the **property code** and remembers the request (`conversations.pending_step`, `pending_message_id`). A valid code links the customer and turns the remembered request into a ticket.
+7. **Classification** against the organization's **service catalog** (`services`): keyword match, the most severe matching service wins; nothing matched → the system "Other" service for manual sorting. For a linked customer at a configured property, only that property's services are considered. Greetings and thanks don't open tickets.
+8. **Ticket**: priority from the service, SLA deadlines resolved per priority as *property+service → organization → built-in* (`services.sla_overrides_for`, `sla.calculate_sla`), auto-assignment to the least-loaded staff/technician linked to the service (`assignment.py`).
+9. **Reply** to the customer in their language (EN/RU today), asking for a photo when none was sent (`ai_response.py`), sent through the channel adapter (`outbound.py`). Customer photos are downloaded to the media volume.
 
-`Customer` is the canonical person/company record. `CustomerIdentity` links one customer to a provider-specific identity such as a LINE user ID, WhatsApp phone/ID, Telegram user ID or email address.
+## Ticket lifecycle
 
-Automatic identity merging must require confidence thresholds and should support manual review. Never merge identities solely because display names are equal.
+`new → assigned → accepted → in_progress → completed → closed`, with `waiting_approval` before closing for high/critical tickets (manager approval). `first_responded_at` is stamped when a ticket first leaves new/assigned, `closed_at` on close — both feed SLA analytics.
 
-## Security principles
+## Background jobs
 
-- Secrets/tokens are stored in a dedicated secret store, not normal application tables.
-- Encrypt data in transit and at rest where supported by infrastructure.
-- Never log provider access tokens or sensitive message contents unnecessarily.
-- Every request is tenant-scoped.
-- RBAC is checked server-side.
-- Sensitive changes produce audit events.
-- Media should use private object storage with signed, short-lived access URLs.
-- Retention/deletion policies must be configurable per organization and compatible with Thai PDPA requirements.
+Two asyncio loops start with the API (`main.py` lifespan). Each takes its own Postgres advisory lock per tick, so running several API instances wouldn't double-send.
 
-## Reliability
+- **SLA monitor** (`sla_monitor.py`, every 30 s): "due soon", "overdue" and escalation notices to staff and managers over Telegram, each sent at most once per ticket, recipient and kind (`ticket_notifications`).
+- **Daily report scheduler** (`daily_report_scheduler.py`, every 60 s): sends each organization's daily summary to managers at its configured time and timezone, honoring skipped weekends/dates and a custom message template.
 
-- Verify webhook signatures where provider supports them.
-- Persist inbound event before processing.
-- Use provider event/message IDs for idempotency.
-- Retry transient provider/AI failures with backoff.
-- Dead-letter failed jobs for operator review.
-- Maintain channel health state and last successful webhook/message timestamp.
+Staff receive notifications only after linking their Telegram from their profile.
 
-## Technology baseline
+## Data model (main tables)
 
-- Next.js / TypeScript
-- Python / FastAPI
-- PostgreSQL
-- Redis-compatible queue/cache if required by worker implementation
-- Object storage for attachments
-- Docker for local development and reproducible deployment
-- n8n may be used selectively for early workflow integrations, but core ticket/SLA logic remains in the application backend.
+| Area | Tables |
+|---|---|
+| Tenancy and people | `organizations`, `users` (roles: owner, admin, manager, staff, technician; `specialties` = service codes) |
+| Catalog and places | `services`, `properties` (with resident `code`), `units`, `property_services` (+ per-priority SLA) |
+| Customers and conversations | `customers` (+ `property_id`, `unit_id`), `customer_identities`, `channels`, `conversations`, `messages`, `message_attachments`, `webhook_events` |
+| Work | `tickets`, `ticket_notifications` |
+
+Every tenant-owned row carries `organization_id`; every query is scoped to the caller's organization in the API layer. Schema changes are numbered SQL files in `database/migrations`.
+
+## Security, as implemented
+
+- JWT auth; role checks server-side on every endpoint.
+- Webhooks are never accepted unauthenticated; per-channel tokens can be rotated.
+- Bot tokens and other provider tokens are masked in logs (`log_redaction.py`) and never returned by the API.
+- Customer photos are served only through an authenticated endpoint.
+
+## Observability
+
+The API exposes Prometheus metrics at `/metrics`. Prometheus scrapes it plus cAdvisor and postgres-exporter; Alertmanager forwards alerts to Telegram; Grafana dashboards are provisioned from `monitoring/grafana`.
+
+## Where the build differs from the target design
+
+The original design called for the items on the left. These are deliberate MVP shortcuts, not oversights.
+
+| Target | Today |
+|---|---|
+| Webhooks acknowledge fast and enqueue work for async workers | Everything runs inside the webhook request. Fine at current volume; slows provider acknowledgements as traffic grows. |
+| Separate worker processes and a queue | In-process asyncio loops with advisory locks. |
+| AI agents (intake, response, image proof, analytics) | Rule-based: catalog keywords for intake, templates for replies. See [`ai-agents.md`](ai-agents.md). |
+| Channel credentials in a dedicated secret store | Stored in the `channels.credentials` JSONB column, masked everywhere they could leak. |
+| Media in private object storage with signed URLs | Local disk volume behind an authenticated endpoint; needs backups, doesn't scale past one API instance. |
+| Audit events for sensitive changes | An `audit_events` model exists but nothing writes to it yet. |
+| Configurable data retention (Thai PDPA) | Not implemented. |
+| Dead-letter queue and retries for provider/AI failures | Only staff notifications retry (3 attempts); failed customer replies aren't retried. |
+| Channel health state | Channels have a connected/disconnected status, no health checks. |
+
+## Deployment
+
+`scripts/deploy-prod.sh` renders `infra/caddy/Caddyfile` from `Caddyfile.template` using values from the server's `.env` (domain, Prometheus basic-auth), then runs `docker compose -f docker-compose.prod.yml up -d --build`, which rebuilds and restarts whatever changed. Migrations are applied by hand to the running database (see the README). Caddy terminates TLS for the product, the API and the monitoring UIs.
