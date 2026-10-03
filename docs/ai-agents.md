@@ -6,9 +6,9 @@ No LLM is called anywhere yet. Each "agent" below is a deterministic baseline bu
 
 | Agent | What runs today | Module |
 |---|---|---|
-| Intake | Keyword match against the organization's **service catalog** (managed on the Services screen). The most severe matching service wins; nothing matched → "Other" for manual sorting. Greetings, thanks and short acknowledgements are recognized and don't open tickets. | `ai_intake.py`, `services.py` |
+| Intake | Keyword match against the organization's **service catalog** (managed on the Services screen). The most severe matching service wins; nothing matched → "Other" for manual sorting. Greetings, thanks and short acknowledgements are recognized and don't open tickets. Built-in services carry English, Russian and Thai keywords. | `ai_intake.py`, `services.py` |
 | Customer match | Exact identity lookup (channel + external user id), then normalized email/phone. Never by display name. | `customer_match.py` |
-| Response | Templates in English and Russian: acknowledgement per service, follow-up and status answers, greetings, the property-code registration questions, and a request for a photo when none was sent. Language is detected from Cyrillic in the customer's messages. **Thai customers currently get English replies.** | `ai_response.py` |
+| Response | Templates in English, Russian and Thai: acknowledgement per service (safety advice for emergencies, a request for details when nothing matched), follow-up and status answers, greetings, the property-code registration questions, and a request for a photo when none was sent. Language is detected from the script (Thai, Cyrillic, otherwise English). Thai texts still need a native review. | `ai_response.py` |
 | Image proof | Not implemented. | — |
 | Analytics insights | Not implemented. The Analytics screen and daily report show computed metrics only. | — |
 

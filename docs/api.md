@@ -119,6 +119,8 @@ Incoming requests are routed by the organization's **service catalog** (`GET/POS
 
 When a new ticket is created, the customer gets an automatic acknowledgement (`ai_response.RuleBasedResponseGenerator`) localized to their detected language. Unless the triggering message already had a photo attached, the acknowledgement appends a one-line request to send one — for every category except `emergency` (asking would delay a safety response). This deliberately includes `other`: an unclassified message is exactly when a photo helps most. Follow-up messages on an open ticket get the same request appended to their generic acknowledgement until a photo is on file for that ticket (any attachment in the conversation since the ticket was created); status questions ("any update?") are answered without it.
 
+**Dialog rules** (`webhook_service._dialog_step`, covered scenario by scenario in `tests/test_dialog_scenarios.py`): small talk (a message made only of greetings, thanks, acknowledgements — "hi there, the gate is broken" is a request) gets a short reply and never opens a ticket; a status question (a status word in a question or a ≤4-word message) is answered with the latest ticket's status, or "no requests yet", without opening one; only tickets not yet completed take follow-ups; a message naming a *different* service than the open ticket opens a second ticket; the explanation after a vague first message ("I have a problem" → `other`) re-sorts that same ticket while it's still new/assigned; the language is taken from the latest message that has one (a code, photo or "ok" keep the conversation's language).
+
 ## Conversations/messages
 
 Implemented read API:

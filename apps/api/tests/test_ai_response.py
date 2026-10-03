@@ -115,7 +115,7 @@ def test_generate_has_media_defaults_to_false():
 
 def test_generate_falls_back_to_english_for_unsupported_language():
     generator = RuleBasedResponseGenerator()
-    result = generator.generate(customer_message="x", category="other", priority="low", language="th")
+    result = generator.generate(customer_message="x", category="other", priority="low", language="de")
     assert result.text == RuleBasedResponseGenerator().generate(customer_message="x", category="other", priority="low", language="en").text
 
 

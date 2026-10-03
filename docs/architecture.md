@@ -32,9 +32,9 @@ All of this happens synchronously inside the webhook request (`webhook_routes.py
 4. **Match or create the customer** (`customer_match.py`) via `customer_identities` (one customer can have identities in several channels). Display names are never used to merge customers.
 5. **Staff commands** (`/link CODE`, `/start CODE`) are handled separately (`staff_link.py`) and never create customer conversations.
 6. **Registration**: if the organization has properties, the customer isn't linked to one, and there's no open ticket in the conversation, the bot asks for the **property code** and remembers the request (`conversations.pending_step`, `pending_message_id`). A valid code links the customer and turns the remembered request into a ticket.
-7. **Classification** against the organization's **service catalog** (`services`): keyword match, the most severe matching service wins; nothing matched → the system "Other" service for manual sorting. For a linked customer at a configured property, only that property's services are considered. Greetings and thanks don't open tickets.
+7. **Classification** against the organization's **service catalog** (`services`): keyword match, the most severe matching service wins; nothing matched → the system "Other" service for manual sorting. For a linked customer at a configured property, only that property's services are considered. Greetings and thanks don't open tickets; status questions are answered without opening one; a different problem while a ticket is open gets its own ticket (rules in [`api.md`](api.md#webhooks)).
 8. **Ticket**: priority from the service, SLA deadlines resolved per priority as *property+service → organization → built-in* (`services.sla_overrides_for`, `sla.calculate_sla`), auto-assignment to the least-loaded staff/technician linked to the service (`assignment.py`).
-9. **Reply** to the customer in their language (EN/RU today), asking for a photo when none was sent (`ai_response.py`), sent through the channel adapter (`outbound.py`). Customer photos are downloaded to the media volume.
+9. **Reply** to the customer in their language (EN/RU/TH), asking for a photo when none was sent (`ai_response.py`), sent through the channel adapter (`outbound.py`). Customer photos are downloaded to the media volume.
 
 ## Ticket lifecycle
 

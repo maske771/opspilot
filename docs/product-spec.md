@@ -203,11 +203,11 @@ The specification above is kept as written. This section records what has been b
 | 1 | Request through LINE, WhatsApp, Telegram or Email | Built for all four. **Only Telegram has been tested with a real account.** |
 | 2 | Adapter validates and normalizes | Built. Webhooks authenticate per channel; raw events stored for idempotency. |
 | 3 | Customer identity matched or created | Built. New: on first contact the bot asks for a **property code** and links the customer to that property; afterwards only managers change it. |
-| 4 | AI intake: intent, category, location, language, priority | Rule-based, no LLM: keywords from a configurable **service catalog**; language detection is EN/RU only. Location comes from the customer's property link, not from the message text. |
+| 4 | AI intake: intent, category, location, language, priority | Rule-based, no LLM: keywords from a configurable **service catalog**; language detection EN/RU/TH. Location comes from the customer's property link, not from the message text. |
 | 5 | Deterministic priority and SLA | Built. Priority from the service; SLA per priority resolved as property+service → organization → built-in defaults. |
 | 6 | Ticket created or updated | Built. Further messages while a ticket is open are added to it. |
 | 7 | Assignment to staff or vendor | Staff/technicians linked to services, least-loaded wins. **Vendors are not modeled.** |
-| 8 | Customer acknowledgement | Built, EN/RU templates; asks for a photo when none was sent. **Thai customers get English.** |
+| 8 | Customer acknowledgement | Built, EN/RU/TH templates; asks for a photo when none was sent, for details when the request is vague, gives safety advice for emergencies. |
 | 9 | Staff receive the work order in their channel | Built for Telegram (staff link their account from their profile). |
 | 10 | SLA worker | Built: due-soon, overdue and escalation notices. |
 | 11 | Staff complete work with photos/comments | **Yes.** The ticket's Work log tab takes comments and up to 5 photos per entry; customer photos from the chat are stored and shown too. |

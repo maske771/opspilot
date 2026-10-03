@@ -4,8 +4,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .ai_intake import classify, is_actionable_request
-from .ai_response import detect_language, generate_greeting, get_response_generator, registration_text
+from .ai_intake import FALLBACK_CODE, classify, is_actionable_request, is_status_query, matched_rule
+from .ai_response import detect_language, generate_greeting, get_response_generator, has_language_signal, registration_text, status_text
 from .assignment import find_assignee_for_category
 from .audit import change, record_ticket
 from .customer_match import find_customer, normalize_email, normalize_phone
@@ -144,7 +144,9 @@ def ingest_normalized_event(db: Session, organization_id, channel, event: Normal
         db.add(message); db.flush()
     has_media = event.media_file_id is not None
 
-    ticket = db.scalar(select(Ticket).where(Ticket.organization_id == organization_id, Ticket.conversation_id == conversation.id, Ticket.status != TicketStatus.CLOSED).order_by(Ticket.created_at.desc()))
+    # Only work that hasn't been done yet takes follow-ups; once a ticket is completed, a new message
+    # about a problem is a new request.
+    ticket = db.scalar(select(Ticket).where(Ticket.organization_id == organization_id, Ticket.conversation_id == conversation.id, Ticket.status.in_(ACTIVE_STATUSES)).order_by(Ticket.created_at.desc()))
     ticket_created = False
     reply_text = None
 
@@ -164,25 +166,8 @@ def ingest_normalized_event(db: Session, organization_id, channel, event: Normal
             reply_text, ticket = _registration_step(db, organization_id, customer, conversation, message, event, has_media, language, generator)
             ticket_created = ticket_created or ticket is not None
         else:
-            rules, _ = intake_rules(db, organization_id, customer.property_id)
-            if ticket is None and (has_media or is_actionable_request(event.text, rules)):
-                ticket = _open_ticket(db, organization_id, customer, conversation, event.text, has_media)
-                ticket_created = True
-                result = generator.generate(customer_message=event.text, category=ticket.category, priority=ticket.priority.value, language=language, has_media=has_media)
-            elif ticket is None:
-                result = generate_greeting(customer_message=event.text, language=language)
-            else:
-                # Don't keep asking for a photo if one already arrived for this ticket.
-                photo_on_file = has_media or db.scalar(
-                    select(MessageAttachment.id)
-                    .join(Message, MessageAttachment.message_id == Message.id)
-                    .where(Message.conversation_id == conversation.id, Message.created_at >= ticket.created_at)
-                    .limit(1)
-                ) is not None
-                result = generator.generate_follow_up(
-                    customer_message=event.text, ticket_status=ticket.status.value, language=language, category=ticket.category, has_media=photo_on_file
-                )
-            reply_text = result.text
+            reply_text, ticket, opened = _dialog_step(db, organization_id, customer, conversation, ticket, event.text, has_media, language, generator)
+            ticket_created = ticket_created or opened
 
         db.add(Message(conversation_id=conversation.id, direction="outbound", content=reply_text))
         db.flush()
@@ -192,6 +177,85 @@ def ingest_normalized_event(db: Session, organization_id, channel, event: Normal
 
 
 PROPERTY_CODE_STEP = "property_code"
+ACTIVE_STATUSES = (TicketStatus.NEW, TicketStatus.ASSIGNED, TicketStatus.ACCEPTED, TicketStatus.IN_PROGRESS)
+# A vague first message ("I have a problem") opens an "other" ticket; while nobody has started on it,
+# the customer's explanation re-sorts that same ticket instead of opening a second one.
+RECLASSIFIABLE_STATUSES = (TicketStatus.NEW, TicketStatus.ASSIGNED)
+
+
+def _dialog_step(db, organization_id, customer, conversation, ticket, text, has_media, language, generator) -> tuple[str, Ticket | None, bool]:
+    """A linked customer's message -> (reply, the ticket it concerns, whether that ticket is new)."""
+    rules, _ = intake_rules(db, organization_id, customer.property_id)
+    rule = matched_rule(text, rules)
+
+    if not has_media and not is_actionable_request(text, rules):
+        return generate_greeting(customer_message=text, language=language, has_open_ticket=ticket is not None).text, ticket, False
+
+    if not has_media and is_status_query(text):
+        latest = ticket or db.scalar(
+            select(Ticket).where(Ticket.organization_id == organization_id, Ticket.conversation_id == conversation.id).order_by(Ticket.created_at.desc())
+        )
+        # "When can you fix the tap?" from someone with no tickets yet is a request, not a status check.
+        if latest is not None or rule is None:
+            return status_text(latest.status.value if latest else None, language), latest, False
+
+    if ticket is None:
+        ticket = _open_ticket(db, organization_id, customer, conversation, text, has_media)
+        result = generator.generate(customer_message=text, category=ticket.category, priority=ticket.priority.value, language=language, has_media=has_media)
+        return result.text, ticket, True
+
+    if rule is not None and rule.code != ticket.category:
+        if ticket.category == FALLBACK_CODE and ticket.status in RECLASSIFIABLE_STATUSES:
+            _reclassify(db, organization_id, ticket, text, rules)
+            result = generator.generate(
+                customer_message=text, category=ticket.category, priority=ticket.priority.value, language=language,
+                has_media=_photo_on_file(db, conversation, ticket, has_media),
+            )
+            return result.text, ticket, False
+        current_rule = next((r for r in rules if r.code == ticket.category), None)
+        if current_rule is None or matched_rule(text, [current_rule]) is None:
+            # A different problem ("and the AC is broken too") gets its own ticket and executor.
+            new_ticket = _open_ticket(db, organization_id, customer, conversation, text, has_media)
+            result = generator.generate(customer_message=text, category=new_ticket.category, priority=new_ticket.priority.value, language=language, has_media=has_media)
+            return result.text, new_ticket, True
+
+    result = generator.generate_follow_up(
+        customer_message=text, ticket_status=ticket.status.value, language=language, category=ticket.category,
+        has_media=_photo_on_file(db, conversation, ticket, has_media),
+    )
+    return result.text, ticket, False
+
+
+def _photo_on_file(db: Session, conversation: Conversation, ticket: Ticket, has_media: bool) -> bool:
+    """Don't keep asking for a photo if one already arrived for this ticket."""
+    return has_media or db.scalar(
+        select(MessageAttachment.id)
+        .join(Message, MessageAttachment.message_id == Message.id)
+        .where(Message.conversation_id == conversation.id, Message.created_at >= ticket.created_at)
+        .limit(1)
+    ) is not None
+
+
+def _reclassify(db: Session, organization_id, ticket: Ticket, text: str, rules) -> None:
+    _, fallback_priority = intake_rules(db, organization_id, ticket.property_id)
+    intake = classify(text, rules, fallback_priority)
+    title = text.strip()[:255]
+    record_ticket(db, ticket, None, "updated", {"fields": {
+        "category": change(ticket.category, intake.category),
+        "priority": change(ticket.priority, intake.priority),
+        "title": change(ticket.title, title),
+    }})
+    ticket.category, ticket.priority, ticket.title = intake.category, intake.priority, title
+    ticket.description = f"{ticket.description}\n\n{text.strip()}"
+    overrides = sla_overrides_for(db, organization_id, ticket.property_id, ticket.category)
+    ticket.response_deadline, ticket.resolution_deadline = calculate_sla(ticket.priority, ticket.created_at, overrides)
+    if ticket.assignee_id is None:
+        assignee = find_assignee_for_category(db, organization_id, ticket.category)
+        if assignee is not None:
+            ticket.assignee_id = assignee.id
+            record_ticket(db, ticket, None, "assigned", {"auto": True, **change(None, assignee.id)})
+            record_ticket(db, ticket, None, "status_changed", change(ticket.status, TicketStatus.ASSIGNED))
+            ticket.status = TicketStatus.ASSIGNED
 
 
 def _org_has_properties(db: Session, organization_id) -> bool:
@@ -199,12 +263,19 @@ def _org_has_properties(db: Session, organization_id) -> bool:
 
 
 def _conversation_language(db: Session, conversation: Conversation, text: str):
-    """A property code like "K7PX2M" has no language of its own, so fall back to the customer's
-    earlier messages in this conversation."""
-    if detect_language(text) == "ru":
-        return "ru"
-    earlier = db.scalars(select(Message.content).where(Message.conversation_id == conversation.id, Message.direction == "inbound"))
-    return "ru" if any(detect_language(content or "") == "ru" for content in earlier) else "en"
+    """A property code like "K7PX2M", a photo or "ok" have no language of their own, so fall back to
+    the customer's latest earlier message that does."""
+    if has_language_signal(text):
+        return detect_language(text)
+    earlier = db.scalars(
+        select(Message.content)
+        .where(Message.conversation_id == conversation.id, Message.direction == "inbound")
+        .order_by(Message.created_at.desc())
+    )
+    for content in earlier:
+        if has_language_signal(content or ""):
+            return detect_language(content)
+    return "en"
 
 
 def _message_has_media(message: Message) -> bool:
