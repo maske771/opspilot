@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { PropertyImport } from '../components/PropertyImport';
 import { RequireAuth, useAuth } from '../lib/auth';
 import {
   apiFetch,
@@ -388,6 +389,11 @@ function OnboardingWizard() {
                 {addingProperty ? t('common.adding') : t('common.add')}
               </button>
             </form>
+          )}
+          {!propertyAdded && (
+            <div style={{ marginTop: 14 }}>
+              <PropertyImport onImported={() => setPropertyAdded(true)} />
+            </div>
           )}
         </StepShell>
       )}

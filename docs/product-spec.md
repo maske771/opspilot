@@ -218,7 +218,7 @@ The specification above is kept as written. This section records what has been b
 
 | Spec | Status |
 |---|---|
-| Onboarding (10 screens) | One 7-step wizard: company, channel, property, team, SLA (view only), test request, go live. **CSV/XLSX import not built.** |
+| Onboarding (10 screens) | One 7-step wizard: company, channel, property, team, SLA (view only), test request, go live. CSV/XLSX import of properties and units is available in the property step and on the Properties screen (preview, row errors, then one-transaction import). |
 | Dashboard | Built: totals and breakdowns. "Recent requests" and "AI insights" are not on it; recent requests live in the Inbox. |
 | Unified Inbox | Built, one row per conversation. Customers with identities in several channels are matched to one customer, but the Inbox doesn't merge their conversations into one view. |
 | Tickets, ticket detail | Built (timeline, photos, manual replies signed with the staff member's name). |

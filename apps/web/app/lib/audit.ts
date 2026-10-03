@@ -83,6 +83,8 @@ export function useAuditText(users: UserRead[], properties: PropertyRead[] = [])
           const prop = typeof to === 'string' ? properties.find((p) => p.id === to)?.name ?? '—' : t('audit.notLinked');
           return t('audit.customer.propertyChanged', { name: String(d.name ?? '—'), property: prop });
         }
+        case 'organization.properties_imported':
+          return t('audit.organization.propertiesImported', { properties: Number(d.properties_new), units: Number(d.units_new) });
         case 'organization.renamed':
           return t('audit.organization.renamed', { from: String(d.from), to: String(d.to) });
         case 'service.archived': {

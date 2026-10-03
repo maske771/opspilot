@@ -14,6 +14,7 @@ from .daily_report_scheduler import run_forever as run_daily_report_scheduler, s
 from .organization_routes import router as organization_router
 from .tickets import router as tickets_router
 from .customer_routes import router as customers_router
+from .property_import import router as property_import_router
 from .property_routes import router as properties_router
 from .unit_routes import router as units_router
 from .user_routes import router as users_router
@@ -87,6 +88,7 @@ app.include_router(organization_router)
 app.include_router(users_router)
 app.include_router(tickets_router)
 app.include_router(customers_router)
+app.include_router(property_import_router)  # before /properties/{id}
 app.include_router(properties_router)
 app.include_router(units_router)
 app.include_router(dashboard_router)

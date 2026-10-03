@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { RequireAuth, useAuth } from '../lib/auth';
 import { apiFetch, ApiError, type PropertyRead, type UnitRead } from '../lib/api';
 import Link from 'next/link';
+import { PropertyImport } from '../components/PropertyImport';
 import { useLocale } from '../lib/locale';
 import { isAdminRole, isManagerRole } from '../lib/roles';
 
@@ -112,6 +113,16 @@ function PropertiesList() {
             {creating ? t('common.adding') : t('common.add')}
           </button>
         </form>
+
+        {isManagerRole(user?.role) && (
+          <PropertyImport
+            onImported={() => {
+              setUnits({});
+              setExpanded(null);
+              load();
+            }}
+          />
+        )}
 
         {error && (
           <div style={{ padding: 14, borderRadius: 10, background: 'var(--color-danger-soft)', color: 'var(--color-danger)', marginBottom: 20 }}>

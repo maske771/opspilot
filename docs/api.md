@@ -48,7 +48,12 @@ POST  /properties/{id}/units
 GET   /units/{id}
 PATCH /units/{id}
 DELETE /units/{id}
+
+POST  /properties/import/preview    multipart: file (.csv UTF-8 or .xlsx, ≤ 1 MB, ≤ 5000 rows)
+POST  /properties/import            same file; owner/admin/manager
 ```
+
+Bulk import: one row per unit with columns `property`, `address` (optional), `unit` (optional); headers are also accepted in Russian (`объект`, `адрес`, `квартира`) and Thai (`อาคาร`, `ที่อยู่`, `ห้อง`), CSV delimiter `,` `;` or tab. Rows group by property name; a name that already exists (case-insensitive) adds units to that property and leaves its address alone. Units already on the property or repeated in the file are skipped. Both endpoints return the same plan (`properties`, `properties_new`, `properties_existing`, `units_new`, `units_skipped`, `errors: [{row, code}]` with spreadsheet row numbers). The import refuses a file with row errors (`422 rows_have_errors`) and otherwise writes everything in one transaction plus a `properties_imported` audit event. File-level errors come back as codes in `detail`: `empty_file`, `no_property_column`, `not_utf8`, `unsupported_file`, `too_many_rows`, `file_too_large`.
 
 ## Customers
 
