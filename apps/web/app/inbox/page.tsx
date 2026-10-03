@@ -21,6 +21,8 @@ export function InboxView() {
   const { t, timeAgo } = useLocale();
   const [items, setItems] = useState<InboxItem[]>([]);
   const [selected, setSelected] = useState<InboxItem | null>(null);
+  // Phones show one pane at a time (see .inbox-grid in globals.css); desktop shows both.
+  const [mobileView, setMobileView] = useState<'list' | 'thread'>('list');
   const [messages, setMessages] = useState<MessageRead[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingThread, setLoadingThread] = useState(false);
@@ -69,14 +71,17 @@ export function InboxView() {
         ) : items.length === 0 ? (
           <div className="empty-state">{t('inbox.empty')}</div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: 16, alignItems: 'start' }}>
-            <div className="card" style={{ maxHeight: 640, overflowY: 'auto' }}>
+          <div className="inbox-grid" data-view={mobileView}>
+            <div className="card inbox-list" style={{ maxHeight: 640, overflowY: 'auto' }}>
               {items.map((item) => {
                 const active = selected?.conversation_id === item.conversation_id;
                 return (
                   <button
                     key={item.conversation_id}
-                    onClick={() => setSelected(item)}
+                    onClick={() => {
+                      setSelected(item);
+                      setMobileView('thread');
+                    }}
                     className="list-row"
                     style={{
                       display: 'block',
@@ -110,13 +115,16 @@ export function InboxView() {
               })}
             </div>
 
-            <div className="card card-pad" style={{ minHeight: 480, display: 'flex', flexDirection: 'column' }}>
+            <div className="card card-pad inbox-thread" style={{ minHeight: 480, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              <button type="button" className="btn btn-ghost mobile-only" style={{ alignSelf: 'flex-start', marginLeft: -8, marginBottom: 8 }} onClick={() => setMobileView('list')}>
+                {t('inbox.back')}
+              </button>
               {!selected ? (
                 <p style={{ color: 'var(--color-text-muted)' }}>{t('inbox.selectConversation')}</p>
               ) : (
                 <>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                    <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
+                    <div style={{ minWidth: 0 }}>
                       <h2 style={{ fontSize: 17, margin: 0 }}>{selected.customer?.name ?? t('inbox.noName')}</h2>
                       <p style={{ fontSize: 12.5, color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
                         {CHANNEL_LABELS[selected.channel.type] ?? selected.channel.type} · {selected.channel.name}

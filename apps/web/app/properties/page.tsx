@@ -106,7 +106,7 @@ function PropertiesList() {
         <h1 className="page-title">{t('nav.properties')}</h1>
         <p className="page-subtitle">{t('properties.subtitle')}</p>
 
-        <form onSubmit={createProperty} className="card card-pad" style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
+        <form onSubmit={createProperty} className="card card-pad row-form" style={{ marginBottom: 24 }}>
           <input required placeholder={t('properties.namePlaceholder')} value={name} onChange={(e) => setName(e.target.value)} className="input" style={{ flex: 1 }} />
           <input placeholder={t('properties.addressPlaceholder')} value={address} onChange={(e) => setAddress(e.target.value)} className="input" style={{ flex: 2 }} />
           <button type="submit" disabled={creating} className="btn btn-accent">

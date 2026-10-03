@@ -106,6 +106,7 @@ export const th: Messages = {
   'dashboard.byPriority': 'ตามความสำคัญ',
 
   'inbox.subtitle': 'การสนทนากับลูกค้าจากทุกช่องทาง',
+  'inbox.back': '← การสนทนาทั้งหมด',
   'inbox.loadFailed': 'โหลดการสนทนาไม่สำเร็จ',
   'inbox.empty': 'ยังไม่มีการสนทนาจากลูกค้า',
   'inbox.noName': 'ไม่ระบุชื่อ',

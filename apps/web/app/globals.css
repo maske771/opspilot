@@ -752,3 +752,134 @@ textarea {
   color: inherit;
   display: block;
 }
+
+/* Responsive helpers for data pages */
+
+body {
+  overflow-wrap: break-word; /* long emails/addresses break instead of pushing the page sideways */
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.row-form {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.row-form > * {
+  min-width: 0;
+}
+
+.mobile-only {
+  display: none;
+}
+
+.inbox-grid {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.ticket-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) 110px 130px 120px 110px 110px;
+  gap: 12px;
+  align-items: center;
+}
+
+@media (max-width: 860px) {
+  .inbox-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* One pane at a time: the list, or the open conversation with a back button. */
+  .inbox-grid[data-view='list'] .inbox-thread,
+  .inbox-grid[data-view='thread'] .inbox-list {
+    display: none !important; /* the panes set display inline */
+  }
+
+  .mobile-only {
+    display: inline-flex;
+  }
+
+  .ticket-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+  }
+
+  .ticket-row > :first-child {
+    flex-basis: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .page,
+  .page-narrow {
+    padding: 16px 16px 40px;
+  }
+
+  .row-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .row-form > * {
+    flex: 1 1 auto !important;
+    width: 100%;
+  }
+
+  .toolbar > .select,
+  .toolbar > .input {
+    flex: 1 1 140px;
+  }
+
+  .tab {
+    padding: 9px 10px;
+  }
+}
+
+/* A table-like row: columns from --cols on desktop, wrapped cells on phones. */
+.grid-row {
+  display: grid;
+  grid-template-columns: var(--cols);
+  gap: 12px;
+  align-items: center;
+}
+
+@media (max-width: 760px) {
+  .grid-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+  }
+
+  .grid-row > :first-child {
+    flex-basis: 100%;
+  }
+}
+
+/* Settings SLA table: priority, response, resolution, then source + reset under them on phones. */
+.sla-grid {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) minmax(0, 1fr) 90px 90px;
+  gap: 10px;
+  align-items: center;
+}
+
+@media (max-width: 640px) {
+  .sla-grid {
+    grid-template-columns: 84px minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .sla-head > :nth-child(n + 4) {
+    display: none;
+  }
+}

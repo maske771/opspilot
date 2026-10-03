@@ -102,7 +102,7 @@ function TeamPage() {
         <h1 className="page-title">{t('nav.team')}</h1>
         <p className="page-subtitle">{t('team.subtitle')}</p>
 
-        <form onSubmit={createUser} className="card card-pad" style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
+        <form onSubmit={createUser} className="card card-pad row-form" style={{ marginBottom: 24 }}>
           <input
             required
             type="email"

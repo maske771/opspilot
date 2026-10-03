@@ -104,6 +104,7 @@ export const en = {
   'dashboard.byPriority': 'By priority',
 
   'inbox.subtitle': 'Conversations with customers across all channels.',
+  'inbox.back': '← All conversations',
   'inbox.loadFailed': 'Could not load conversations',
   'inbox.empty': 'No customer conversations yet.',
   'inbox.noName': 'No name',

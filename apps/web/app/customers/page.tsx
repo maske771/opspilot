@@ -48,7 +48,7 @@ function CustomerRow({
   const unitNumber = units.find((u) => u.id === customer.unit_id)?.unit_number;
 
   return (
-    <div className="list-row" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1.2fr 0.8fr', gap: 12, alignItems: 'center' }}>
+    <div className="list-row grid-row" style={{ '--cols': '1.2fr 1fr 1fr 1.2fr 0.8fr' } as React.CSSProperties}>
       <div style={{ fontWeight: 600, fontSize: 14 }}>{customer.name ?? '—'}</div>
       <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{customer.phone ?? '—'}</div>
       <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{customer.email ?? '—'}</div>
@@ -151,7 +151,7 @@ function CustomersList() {
         <h1 className="page-title">{t('nav.customers')}</h1>
         <p className="page-subtitle">{t('customers.subtitle')}</p>
 
-        <form onSubmit={createCustomer} className="card card-pad" style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
+        <form onSubmit={createCustomer} className="card card-pad row-form" style={{ marginBottom: 24 }}>
           <input required placeholder={t('customers.name')} value={name} onChange={(e) => setName(e.target.value)} className="input" style={{ flex: 1 }} />
           <input placeholder={t('customers.phone')} value={phone} onChange={(e) => setPhone(e.target.value)} className="input" style={{ flex: 1 }} />
           <input placeholder={t('auth.email')} value={email} onChange={(e) => setEmail(e.target.value)} className="input" style={{ flex: 1 }} />

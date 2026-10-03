@@ -52,7 +52,7 @@ function CompanySection() {
           {error}
         </div>
       )}
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <input value={name} onChange={(e) => setName(e.target.value)} className="input" style={{ maxWidth: 360 }} placeholder={t('settings.company.namePlaceholder')} />
         <button type="button" className="btn btn-accent" disabled={saving || !name.trim() || name === loaded} onClick={save}>
           {saving ? t('common.saving') : t('common.save')}
@@ -156,7 +156,7 @@ function SlaSection() {
         <p style={{ color: 'var(--color-text-muted)' }}>{t('common.loading')}</p>
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 1fr 90px 90px', gap: 10, alignItems: 'center', fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 8 }}>
+          <div className="sla-grid sla-head" style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 8 }}>
             <span />
             <span>{t('settings.sla.response')}</span>
             <span>{t('settings.sla.resolution')}</span>
@@ -164,7 +164,7 @@ function SlaSection() {
             <span />
           </div>
           {rows.map((row) => (
-            <div key={row.priority} style={{ display: 'grid', gridTemplateColumns: '110px 1fr 1fr 90px 90px', gap: 10, alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--color-border-subtle)' }}>
+            <div key={row.priority} className="sla-grid" style={{ padding: '8px 0', borderTop: '1px solid var(--color-border-subtle)' }}>
               <span className="badge" style={{ ...priorityBadgeStyle(row.priority), width: 'fit-content' }}>
                 {t(PRIORITY_KEYS[row.priority])}
               </span>

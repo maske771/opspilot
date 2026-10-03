@@ -310,7 +310,7 @@ function TemplateSettings() {
         style={{ width: '100%', fontFamily: 'inherit', resize: 'vertical', marginBottom: 12 }}
       />
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
         <button type="button" className="btn btn-primary" onClick={save} disabled={saving || !dirty}>
           {t('report.template.save')}
         </button>
@@ -394,7 +394,7 @@ function ReportView() {
         </>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
         <button type="button" className="btn btn-secondary" onClick={() => setDate((d) => shiftDate(d, -1))}>
           {t('report.prevDay')}
         </button>
@@ -433,7 +433,7 @@ function ReportView() {
             ))}
           </section>
 
-          <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
+          <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginBottom: 28 }}>
             <div className="card card-pad">
               <h2 style={{ fontSize: 15, marginTop: 0, marginBottom: 14 }}>{t('report.createdByPriority')}</h2>
               {report.tickets_created_by_priority.length === 0 ? (
@@ -472,8 +472,8 @@ function ReportView() {
               {report.open_critical_high.map((ticket) => (
                 <Link key={ticket.id} href={`/tickets/${ticket.id}`} className="link-reset">
                   <div
-                    className="list-row"
-                    style={{ display: 'grid', gridTemplateColumns: '1.6fr 110px 130px 140px 110px', gap: 12, alignItems: 'center' }}
+                    className="list-row grid-row"
+                    style={{ '--cols': 'minmax(0, 1.6fr) 110px 130px 140px 110px' } as React.CSSProperties}
                   >
                     <div>
                       <div style={{ fontWeight: 600, fontSize: 14 }}>{ticket.title}</div>

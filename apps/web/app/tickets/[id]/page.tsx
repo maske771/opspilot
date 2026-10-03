@@ -217,8 +217,8 @@ function TicketDetail() {
           <p style={{ color: 'var(--color-text-muted)' }}>{t('common.loading')}</p>
         ) : (
           <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-              <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.01em', margin: 0 }}>{ticket.title}</h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px 16px', flexWrap: 'wrap', marginBottom: 6 }}>
+              <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.01em', margin: 0, flex: '1 1 260px', minWidth: 0 }}>{ticket.title}</h1>
               <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                 <span className="badge" style={priorityBadgeStyle(ticket.priority)}>
                   {t(PRIORITY_KEYS[ticket.priority])}
@@ -238,7 +238,7 @@ function TicketDetail() {
             </p>
 
             {availableActions.length > 0 && (
-              <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 24 }}>
                 {availableActions.map((a) => (
                   <button key={a.action} onClick={() => runAction(a.action)} disabled={busy} className="btn btn-secondary">
                     {t(a.label)}

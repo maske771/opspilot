@@ -48,7 +48,7 @@ export function ReplyBox({
           onChange={(e) => setText(e.target.value)}
           placeholder={t('reply.placeholder')}
           className="input"
-          style={{ flex: 1 }}
+          style={{ flex: 1, minWidth: 0 }}
         />
         <button type="submit" disabled={sending || !text.trim()} className="btn btn-accent">
           {sending ? '...' : t('reply.send')}

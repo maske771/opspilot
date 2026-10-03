@@ -106,6 +106,7 @@ export const ru: Messages = {
   'dashboard.byPriority': 'По приоритету',
 
   'inbox.subtitle': 'Разговоры с клиентами по всем каналам.',
+  'inbox.back': '← Все разговоры',
   'inbox.loadFailed': 'Не удалось загрузить обращения',
   'inbox.empty': 'Пока нет ни одного обращения от клиентов.',
   'inbox.noName': 'Без имени',

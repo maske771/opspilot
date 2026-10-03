@@ -257,7 +257,7 @@ function AnalyticsView() {
       <h1 className="page-title">{t('nav.analytics')}</h1>
       <p className="page-subtitle">{t('analytics.subtitle')}</p>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
         {PRESETS.map((days) => (
           <button
             key={days}

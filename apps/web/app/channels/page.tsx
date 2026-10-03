@@ -360,7 +360,7 @@ function ChannelsPage() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, fontSize: 12, color: 'var(--color-text-muted)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 8, fontSize: 12, color: 'var(--color-text-muted)' }}>
                     <span style={{ flexShrink: 0 }}>{t('channels.webhook')}</span>
                     <code style={{ overflowWrap: 'anywhere' }}>{maskedWebhookUrl(channel)}</code>
                     <button type="button" className="btn btn-ghost" style={{ flexShrink: 0 }} onClick={() => copyWebhook(channel)}>

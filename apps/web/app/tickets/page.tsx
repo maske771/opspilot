@@ -94,7 +94,7 @@ export function TicketsList({ mine = false }: { mine?: boolean }) {
         </div>
         <p className="page-subtitle">{t('tickets.subtitle')}</p>
 
-        <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
+        <div className="toolbar" style={{ marginBottom: 18 }}>
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as TicketStatus | '')} className="select">
             <option value="">{t('tickets.allStatuses')}</option>
             {Object.entries(STATUS_KEYS).map(([value, key]) => (
@@ -143,8 +143,7 @@ export function TicketsList({ mine = false }: { mine?: boolean }) {
               return (
                 <div
                   key={ticket.id}
-                  className="list-row"
-                  style={{ display: 'grid', gridTemplateColumns: '1.6fr 110px 130px 120px 110px 110px', gap: 12, alignItems: 'center' }}
+                  className="list-row ticket-row"
                 >
                   <Link href={`/tickets/${ticket.id}`} className="link-reset">
                     <div style={{ fontWeight: 600, fontSize: 14 }}>{ticket.title}</div>
