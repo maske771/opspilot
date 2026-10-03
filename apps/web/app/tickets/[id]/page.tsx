@@ -4,12 +4,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { MessageTimeline } from '../../components/MessageTimeline';
 import { ReplyBox } from '../../components/ReplyBox';
+import { AuditTimeline } from '../../components/AuditTimeline';
 import { WorkLog } from '../../components/WorkLog';
 import { Tabs, type TabDef } from '../../components/Tabs';
 import { RequireAuth, useAuth } from '../../lib/auth';
 import {
   apiFetch,
   ApiError,
+  type AuditEventRead,
   type CustomerRead,
   type MessageRead,
   type PropertyRead,
@@ -20,6 +22,7 @@ import {
   type UserRead,
 } from '../../lib/api';
 import type { MessageKey } from '../../lib/i18n/en';
+import { useAuditText } from '../../lib/audit';
 import { useLocale } from '../../lib/locale';
 import { useServices } from '../../lib/services';
 import { isManagerRole } from '../../lib/roles';
@@ -53,10 +56,10 @@ const AVAILABLE_ACTIONS: Record<TicketStatus, { action: string; label: MessageKe
   closed: [],
 };
 
-type TicketTab = 'details' | 'conversation' | 'worklog';
+type TicketTab = 'details' | 'conversation' | 'worklog' | 'history';
 
 function parseTab(value: string | null): TicketTab {
-  return value === 'conversation' || value === 'worklog' ? value : 'details';
+  return value === 'conversation' || value === 'worklog' || value === 'history' ? value : 'details';
 }
 
 function TicketDetail() {
@@ -74,6 +77,7 @@ function TicketDetail() {
   const [customers, setCustomers] = useState<CustomerRead[]>([]);
   const [messages, setMessages] = useState<MessageRead[]>([]);
   const [notes, setNotes] = useState<TicketNoteRead[]>([]);
+  const [history, setHistory] = useState<AuditEventRead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -109,6 +113,8 @@ function TicketDetail() {
         setCategory(tk.category);
         setPriority(tk.priority);
         setAssigneeId(tk.assignee_id ?? '');
+        // History is refetched after every change, so it is loaded on its own.
+        apiFetch<AuditEventRead[]>(`/tickets/${ticketId}/history`, { token }).then(setHistory).catch(() => setHistory([]));
         if (tk.conversation_id) {
           apiFetch<MessageRead[]>(`/conversations/${tk.conversation_id}/messages`, { token }).then(setMessages);
         }
@@ -121,6 +127,11 @@ function TicketDetail() {
   useEffect(() => {
     load();
   }, [load]);
+
+  function refreshHistory() {
+    if (token) apiFetch<AuditEventRead[]>(`/tickets/${ticketId}/history`, { token }).then(setHistory).catch(() => {});
+  }
+  const describe = useAuditText(users, properties);
 
   async function saveChanges(e: React.FormEvent) {
     e.preventDefault();
@@ -140,6 +151,7 @@ function TicketDetail() {
         },
       });
       setTicket(updated);
+      refreshHistory();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('ticket.saveFailed'));
     } finally {
@@ -154,6 +166,7 @@ function TicketDetail() {
     try {
       const updated = await apiFetch<TicketRead>(`/tickets/${ticket.id}/${action}`, { method: 'POST', token });
       setTicket(updated);
+      refreshHistory();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('ticket.actionFailed'));
     } finally {
@@ -179,6 +192,7 @@ function TicketDetail() {
     { id: 'details', label: t('ticket.tabDetails') },
     ...(hasConversation ? [{ id: 'conversation', label: t('ticket.conversation'), count: messages.length }] : []),
     { id: 'worklog', label: t('worklog.tab'), count: notes.length },
+    { id: 'history', label: t('audit.tab') },
   ];
 
   // Closing a high/critical ticket is manager-only server-side; hide the button for everyone else
@@ -324,8 +338,17 @@ function TicketDetail() {
                   ticketId={ticket.id}
                   notes={notes}
                   closed={ticket.status === 'closed'}
-                  onAdded={(note) => setNotes((prev) => [...prev, note])}
+                  onAdded={(note) => {
+                    setNotes((prev) => [...prev, note]);
+                    refreshHistory();
+                  }}
                 />
+              </div>
+            )}
+
+            {activeTab === 'history' && (
+              <div role="tabpanel" id="ticket-panel-history" aria-labelledby="ticket-tab-history" className="card card-pad">
+                <AuditTimeline events={history} describe={describe} />
               </div>
             )}
           </>

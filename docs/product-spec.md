@@ -232,7 +232,7 @@ The specification above is kept as written. This section records what has been b
 
 - **Categories → service catalog.** The fixed list in "Initial categories" became a per-organization catalog managed in the UI. It starts with Emergency, Plumbing, Electrical, HVAC, Appliances, Access & keys and Other; Internet/Wi-Fi, Furniture, Cleaning and Security can be added as services.
 - **SLA defaults** match the table above and are configurable per organization and per property+service.
-- **Ticket fields not built:** vendor, AI analysis, audit history (an audit model exists but nothing writes to it).
+- **Ticket fields not built:** vendor, AI analysis. Audit history is built: the ticket's History tab and an organization-wide Audit log screen for owner/admin.
 - **AI** is rule-based throughout; see [`ai-agents.md`](ai-agents.md).
 - **Additions not in the spec:** staff Telegram notifications and escalations, daily-report push delivery, property resident codes, UI in English/Russian/Thai with light and dark themes.
 

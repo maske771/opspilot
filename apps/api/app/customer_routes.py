@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from .audit import change, record
 from .auth import get_current_user, require_roles
 from .db import get_db
 from .models import Customer, Property, Unit, User, UserRole
@@ -91,6 +92,16 @@ def update_customer(customer_id: uuid.UUID, payload: CustomerUpdate, user: User 
             if unit is None or unit.organization_id != user.organization_id or unit.property_id != property_id:
                 raise HTTPException(400, "Unit does not belong to the property")
         changes["property_id"], changes["unit_id"] = property_id, unit_id
+        if (property_id, unit_id) != (customer.property_id, customer.unit_id):
+            record(
+                db,
+                organization_id=customer.organization_id,
+                actor=user,
+                entity_type="customer",
+                entity_id=customer.id,
+                action="property_changed",
+                details={"name": customer.name, "property_id": change(customer.property_id, property_id), "unit_id": change(customer.unit_id, unit_id)},
+            )
     for field, value in changes.items():
         setattr(customer, field, value)
     db.commit()

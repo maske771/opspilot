@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from .ai_intake import classify, is_actionable_request
 from .ai_response import detect_language, generate_greeting, get_response_generator, registration_text
 from .assignment import find_assignee_for_category
+from .audit import change, record_ticket
 from .customer_match import find_customer, normalize_email, normalize_phone
 from .models import Conversation, Customer, CustomerIdentity, Message, MessageAttachment, Property, Ticket, TicketStatus, normalize_property_code
 from .services import intake_rules, sla_overrides_for
@@ -273,8 +274,10 @@ def _open_ticket(db: Session, organization_id, customer: Customer, conversation:
     db.flush()
     overrides = sla_overrides_for(db, organization_id, ticket.property_id, ticket.category)
     ticket.response_deadline, ticket.resolution_deadline = calculate_sla(ticket.priority, ticket.created_at, overrides)
+    record_ticket(db, ticket, None, "created", {"source": "chat", "category": ticket.category, "priority": ticket.priority})
     assignee = find_assignee_for_category(db, organization_id, ticket.category)
     if assignee is not None:
         ticket.assignee_id = assignee.id
         ticket.status = TicketStatus.ASSIGNED
+        record_ticket(db, ticket, None, "assigned", {"auto": True, **change(None, assignee.id)})
     return ticket

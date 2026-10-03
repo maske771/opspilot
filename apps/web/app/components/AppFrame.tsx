@@ -47,6 +47,7 @@ function navGroups(role: UserRole | undefined): NavGroup[] {
         { href: '/team', label: 'nav.team', icon: 'team' },
         { href: '/services', label: 'nav.services', icon: 'services' },
         { href: '/settings', label: 'nav.settings', icon: 'settings' },
+        { href: '/audit', label: 'nav.audit', icon: 'audit' },
         { href: '/onboarding', label: 'nav.setup', icon: 'setup' },
       ],
     });

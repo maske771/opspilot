@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from .audit import change, record
 from .auth import get_current_user, hash_password, require_roles
 from .db import get_db
 from .models import User, UserRole
@@ -38,6 +39,10 @@ class UserSpecialtiesUpdate(BaseModel):
     specialties: list[str] = Field(max_length=50)
 
 
+def _record(db: Session, actor: User, user_id: uuid.UUID, action: str, details: dict) -> None:
+    record(db, organization_id=actor.organization_id, actor=actor, entity_type="user", entity_id=user_id, action=action, details=details)
+
+
 @router.get("", response_model=list[UserRead])
 def list_users(
     user: User = Depends(get_current_user),
@@ -62,12 +67,14 @@ def create_user(
         raise HTTPException(422, "Email cannot be empty")
 
     item = User(
+        id=uuid.uuid4(),
         organization_id=user.organization_id,
         email=email,
         password_hash=hash_password(payload.password),
         role=payload.role,
     )
     db.add(item)
+    _record(db, user, item.id, "created", {"email": email, "role": payload.role})
     try:
         db.commit()
     except IntegrityError:
@@ -96,6 +103,8 @@ def update_user_role(
     if user.role == UserRole.ADMIN and payload.role == UserRole.ADMIN:
         raise HTTPException(403, "Only the owner can assign admin role")
 
+    if payload.role != target.role:
+        _record(db, user, target.id, "role_changed", {"email": target.email, **change(target.role, payload.role)})
     target.role = payload.role
     db.commit()
     db.refresh(target)
@@ -118,6 +127,8 @@ def update_user_specialties(
     unknown = requested - known
     if unknown:
         raise HTTPException(400, f"Unknown service: {', '.join(sorted(unknown))}")
+    if sorted(requested) != sorted(target.specialties or []):
+        _record(db, user, target.id, "specialties_changed", {"email": target.email, **change(sorted(target.specialties or []), sorted(requested))})
     target.specialties = sorted(requested)
     db.commit()
     db.refresh(target)
@@ -140,5 +151,6 @@ def delete_user(
     if user.role == UserRole.ADMIN and target.role == UserRole.ADMIN:
         raise HTTPException(403, "Only the owner can delete an admin")
 
+    _record(db, user, target.id, "deleted", {"email": target.email, "role": target.role})
     db.delete(target)
     db.commit()

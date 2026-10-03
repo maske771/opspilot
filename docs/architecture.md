@@ -57,6 +57,7 @@ Staff receive notifications only after linking their Telegram from their profile
 | Catalog and places | `services`, `properties` (with resident `code`), `units`, `property_services` (+ per-priority SLA) |
 | Customers and conversations | `customers` (+ `property_id`, `unit_id`), `customer_identities`, `channels`, `conversations`, `messages`, `message_attachments`, `webhook_events` |
 | Work | `tickets`, `ticket_notes` + `ticket_note_attachments` (work log), `ticket_notifications` |
+| Audit | `audit_events` (ticket history and sensitive admin actions) |
 
 Every tenant-owned row carries `organization_id`; every query is scoped to the caller's organization in the API layer. Schema changes are numbered SQL files in `database/migrations`.
 
@@ -82,7 +83,7 @@ The original design called for the items on the left. These are deliberate MVP s
 | AI agents (intake, response, image proof, analytics) | Rule-based: catalog keywords for intake, templates for replies. See [`ai-agents.md`](ai-agents.md). |
 | Channel credentials in a dedicated secret store | Stored in the `channels.credentials` JSONB column, masked everywhere they could leak. |
 | Media in private object storage with signed URLs | Local disk volume behind an authenticated endpoint; needs backups, doesn't scale past one API instance. |
-| Audit events for sensitive changes | An `audit_events` model exists but nothing writes to it yet. |
+| Audit events for sensitive changes | Done: `audit_events` is written in the same transaction as the change (ticket lifecycle; roles, channels, customer↔property links, property codes, SLA, archived services). Never stores credentials or tokens. |
 | Configurable data retention (Thai PDPA) | Not implemented. |
 | Dead-letter queue and retries for provider/AI failures | Only staff notifications retry (3 attempts); failed customer replies aren't retried. |
 | Channel health state | Channels have a connected/disconnected status, no health checks. |

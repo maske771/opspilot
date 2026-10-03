@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .assignment import find_assignee_for_category
+from .audit import change, record_ticket
 from .auth import get_current_user
 from .db import get_db
 from .models import Ticket, TicketPriority, TicketStatus, User
@@ -161,10 +162,12 @@ def create_ticket(payload: TicketCreate, user: User = Depends(get_current_user),
     db.add(ticket)
     db.flush()
     _apply_sla(db, ticket)
+    record_ticket(db, ticket, user, "created", {"source": "manual", "category": ticket.category, "priority": ticket.priority})
     assignee = find_assignee_for_category(db, user.organization_id, ticket.category)
     if assignee is not None:
         ticket.assignee_id = assignee.id
         ticket.status = TicketStatus.ASSIGNED
+        record_ticket(db, ticket, None, "assigned", {"auto": True, **change(None, assignee.id)})
     db.commit()
     db.refresh(ticket)
     return ticket
@@ -185,11 +188,22 @@ def update_ticket(ticket_id: uuid.UUID, payload: TicketUpdate, user: User = Depe
         _ensure_assignee(ticket, changes["assignee_id"], db)
     # The SLA depends on priority and, per property, on the service — recompute if either changes.
     sla_inputs_changed = any(field in changes and changes[field] != getattr(ticket, field) for field in ("priority", "category"))
+    edited = {
+        # The description can be long; history notes that it changed, not both versions.
+        field: change(getattr(ticket, field), value) if field != "description" else {}
+        for field, value in changes.items()
+        if field != "assignee_id" and value != getattr(ticket, field)
+    }
+    if edited:
+        record_ticket(db, ticket, user, "updated", {"fields": edited})
+    if "assignee_id" in changes and changes["assignee_id"] != ticket.assignee_id:
+        record_ticket(db, ticket, user, "assigned", change(ticket.assignee_id, changes["assignee_id"]))
     for field, value in changes.items():
         setattr(ticket, field, value)
     if sla_inputs_changed:
         _apply_sla(db, ticket)
     if ticket.assignee_id is not None and ticket.status == TicketStatus.NEW:
+        record_ticket(db, ticket, user, "status_changed", change(ticket.status, TicketStatus.ASSIGNED))
         ticket.status = TicketStatus.ASSIGNED
     db.commit()
     db.refresh(ticket)
@@ -200,8 +214,11 @@ def update_ticket(ticket_id: uuid.UUID, payload: TicketUpdate, user: User = Depe
 def assign_ticket(ticket_id: uuid.UUID, payload: TicketAssign, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Ticket:
     ticket = _get_ticket(ticket_id, user, db)
     _ensure_assignee(ticket, payload.assignee_id, db)
+    if payload.assignee_id != ticket.assignee_id:
+        record_ticket(db, ticket, user, "assigned", change(ticket.assignee_id, payload.assignee_id))
     ticket.assignee_id = payload.assignee_id
     if ticket.status == TicketStatus.NEW:
+        record_ticket(db, ticket, user, "status_changed", change(ticket.status, TicketStatus.ASSIGNED))
         ticket.status = TicketStatus.ASSIGNED
     db.commit()
     db.refresh(ticket)
@@ -210,7 +227,9 @@ def assign_ticket(ticket_id: uuid.UUID, payload: TicketAssign, user: User = Depe
 
 def _apply_transition(ticket_id: uuid.UUID, target: TicketStatus, user: User, db: Session) -> Ticket:
     ticket = _get_ticket(ticket_id, user, db)
+    previous = ticket.status
     _transition(ticket, target)
+    record_ticket(db, ticket, user, "status_changed", change(previous, target))
     db.commit()
     db.refresh(ticket)
     return ticket

@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from .audit import record
 from .auth import get_current_user, require_roles
 from .db import get_db
 from .models import Channel, User, UserRole, new_webhook_token
@@ -62,6 +63,11 @@ def visible_channel(channel: Channel, user: User) -> ChannelRead:
     return item
 
 
+def _record(db: Session, actor: User, channel: Channel, action: str, details: dict | None = None) -> None:
+    # Never credentials or tokens — only which fields changed.
+    record(db, organization_id=channel.organization_id, actor=actor, entity_type="channel", entity_id=channel.id, action=action, details={"type": channel.type, "name": channel.name, **(details or {})})
+
+
 @router.get("", response_model=list[ChannelRead])
 def list_channels(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     channels = db.scalars(select(Channel).where(Channel.organization_id == user.organization_id).order_by(Channel.created_at)).all()
@@ -78,8 +84,9 @@ def connect_channel(channel_type: str, payload: ChannelConnect, user: User = Dep
         name = normalize_channel_name(payload.name)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
-    channel = Channel(organization_id=user.organization_id, type=channel_type, account_id=account_id, name=name, status="connected", credentials=payload.credentials)
+    channel = Channel(id=uuid.uuid4(), organization_id=user.organization_id, type=channel_type, account_id=account_id, name=name, status="connected", credentials=payload.credentials)
     db.add(channel)
+    _record(db, user, channel, "connected")
     db.commit()
     db.refresh(channel)
     result = visible_channel(channel, user)
@@ -95,6 +102,7 @@ def disconnect_channel(channel_type: str, user: User = Depends(require_roles("ow
     if channel is None:
         raise HTTPException(404, "Connected channel not found")
     channel.status = "disconnected"
+    _record(db, user, channel, "disconnected")
     db.commit()
     db.refresh(channel)
     return channel
@@ -115,6 +123,7 @@ def rotate_webhook_token(channel_id: uuid.UUID, user: User = Depends(require_rol
     if channel is None or channel.organization_id != user.organization_id:
         raise HTTPException(404, "Channel not found")
     channel.webhook_token = new_webhook_token()
+    _record(db, user, channel, "webhook_token_rotated")
     db.commit()
     db.refresh(channel)
     if channel.type == "telegram":
@@ -154,6 +163,8 @@ def update_channel(channel_id: uuid.UUID, payload: ChannelUpdate, user: User = D
             setattr(channel, field, value)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
+    if changes:
+        _record(db, user, channel, "updated", {"fields": sorted(changes)})
     db.commit()
     db.refresh(channel)
     if channel.type == "telegram" and channel.status == "connected" and ("credentials" in changes or "status" in changes):

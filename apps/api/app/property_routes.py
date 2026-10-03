@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from .audit import record
 from .auth import get_current_user, require_roles
 from .db import get_db
 from .models import Property, User, new_property_code
@@ -75,6 +76,7 @@ def regenerate_property_code(property_id: uuid.UUID, user: User = Depends(requir
     if item is None or item.organization_id != user.organization_id:
         raise HTTPException(404, "Property not found")
     item.code = new_property_code()
+    record(db, organization_id=item.organization_id, actor=user, entity_type="property", entity_id=item.id, action="code_regenerated", details={"name": item.name})
     db.commit()
     db.refresh(item)
     return item
@@ -85,5 +87,6 @@ def delete_property(property_id: uuid.UUID, user: User = Depends(require_roles("
     item = db.get(Property, property_id)
     if item is None or item.organization_id != user.organization_id:
         raise HTTPException(404, "Property not found")
+    record(db, organization_id=item.organization_id, actor=user, entity_type="property", entity_id=item.id, action="deleted", details={"name": item.name})
     db.delete(item)
     db.commit()

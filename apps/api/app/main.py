@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .analytics_routes import router as analytics_router
 from .attachment_routes import router as attachment_router
+from .audit import router as audit_router
 from .auth_routes import router as auth_router
 from .daily_report_scheduler import run_forever as run_daily_report_scheduler, scheduler_enabled as daily_report_scheduler_enabled
 from .organization_routes import router as organization_router
@@ -95,6 +96,7 @@ app.include_router(analytics_router)
 app.include_router(service_router)
 app.include_router(property_service_router)
 app.include_router(ticket_note_router)
+app.include_router(audit_router)
 app.include_router(channel_router)
 app.include_router(conversation_router)
 app.include_router(inbox_router)

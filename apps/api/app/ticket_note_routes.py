@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from .audit import record_ticket
 from .auth import get_current_user
 from .db import get_db
 from .media import read_bytes, save_bytes
@@ -89,6 +90,7 @@ def add_note(db: Session, user: User, ticket_id: uuid.UUID, body: str | None, ph
     for content, (content_type, extension) in typed:
         path = save_bytes(ticket.organization_id, content, extension)
         note.attachments.append(TicketNoteAttachment(organization_id=ticket.organization_id, storage_path=path, content_type=content_type))
+    record_ticket(db, ticket, user, "note_added", {"note_id": note.id, "photos": len(typed)})
     db.commit()
     db.refresh(note)
     return _read(db, note)

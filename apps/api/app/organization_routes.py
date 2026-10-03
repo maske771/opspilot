@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
+from .audit import change, record
 from .auth import get_current_user, require_roles
 from .db import get_db
 from .models import Organization, TicketPriority, User
@@ -81,6 +82,8 @@ def update_organization(
         changes["name"] = changes["name"].strip()
         if not changes["name"]:
             raise HTTPException(422, "Organization name cannot be empty")
+    if "name" in changes and changes["name"] != organization.name:
+        record(db, organization_id=organization.id, actor=user, entity_type="organization", entity_id=organization.id, action="renamed", details=change(organization.name, changes["name"]))
     for field, value in changes.items():
         setattr(organization, field, value)
     db.commit()
@@ -112,6 +115,8 @@ def update_organization_sla(
             overrides.pop(priority_value, None)
         else:
             overrides[priority_value] = value
+    if (overrides or None) != organization.sla_overrides:
+        record(db, organization_id=organization.id, actor=user, entity_type="organization", entity_id=organization.id, action="sla_changed", details=change(organization.sla_overrides, overrides or None))
     organization.sla_overrides = overrides or None
     db.commit()
     db.refresh(organization)

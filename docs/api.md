@@ -160,6 +160,25 @@ GET  /ticket-attachments/{id}       image bytes
 
 Any user of the organization can read the log and add entries; executors use it to record what was done and attach before/after photos. An entry needs text or at least one photo (`422` otherwise). Photos must be JPEG, PNG or WebP — detected from the file's bytes, not its name (`415`) — at most 10 MB each (`413`) and 5 per entry (`422`). Body text is capped at 5000 characters. Closed tickets are read-only (`409`). Photos are stored like chat photos (local media volume) and served only to users of the same organization.
 
+### History and audit log
+
+```text
+GET /tickets/{id}/history                 any user of the organization; oldest first
+GET /audit-events?entity_type=&entity_id=&limit=&offset=   owner/admin; newest first (limit ≤ 500)
+```
+
+Each event: `actor_id`/`actor_email` (null = the system, e.g. chat-created tickets or auto-assignment), `entity_type`, `entity_id`, `action`, `details`, `created_at`. Events are written in the same transaction as the change.
+
+| entity_type | actions |
+|---|---|
+| `ticket` | `created` (`source`: manual/chat), `assigned` (`from`/`to`, `auto`), `status_changed` (`from`/`to`), `updated` (`fields`: per field `from`/`to`; description only notes the change), `note_added` |
+| `user` | `created`, `role_changed`, `specialties_changed`, `deleted` |
+| `channel` | `connected`, `disconnected`, `webhook_token_rotated`, `updated` (field names only — never credentials or tokens) |
+| `customer` | `property_changed` |
+| `property` | `code_regenerated` (the code itself is not stored), `services_updated`, `deleted` |
+| `organization` | `renamed`, `sla_changed` |
+| `service` | `archived` |
+
 ### Manager approval for high/critical closure
 
 `POST /tickets/{id}/complete` on a `high`/`critical` ticket moves it to `waiting_approval` instead of `completed` (per `docs/product-spec.md`'s "high/critical closure requires human approval"), and notifies every `owner`/`admin`/`manager` in the organization once, immediately (`notify_managers_approval_needed`, not the polling SLA monitor). `low`/`medium` tickets complete as before.

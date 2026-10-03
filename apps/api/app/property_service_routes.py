@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from .audit import record
 from .auth import get_current_user
 from .db import get_db
 from .models import Organization, Property, PropertyService, Service, TicketPriority, User, UserRole
@@ -120,5 +121,14 @@ def update_property_services(
     for entry in payload.services:
         sla = {priority.value: pair.model_dump() for priority, pair in entry.sla.items()}
         db.add(PropertyService(organization_id=item.organization_id, property_id=item.id, service_id=entry.service_id, sla=sla or None))
+    record(
+        db,
+        organization_id=item.organization_id,
+        actor=user,
+        entity_type="property",
+        entity_id=item.id,
+        action="services_updated",
+        details={"name": item.name, "services": len(payload.services), "with_sla": sum(1 for e in payload.services if e.sla)},
+    )
     db.commit()
     return _read(db, item)

@@ -68,6 +68,17 @@ export type TicketNoteRead = {
   attachments: { id: string; content_type: string }[];
 };
 
+export type AuditEventRead = {
+  id: string;
+  actor_id: string | null;
+  actor_email: string | null;
+  entity_type: string;
+  entity_id: string;
+  action: string;
+  details: Record<string, unknown>;
+  created_at: string;
+};
+
 export type UserRole ='owner' | 'admin' | 'manager' | 'staff' | 'technician';
 
 export type UserRead = {

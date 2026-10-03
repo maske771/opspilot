@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from .audit import record
 from .auth import get_current_user
 from .db import get_db
 from .models import Service, TicketPriority, User, UserRole
@@ -148,5 +149,6 @@ def archive_service(service_id: uuid.UUID, user: User = Depends(get_current_user
     if service.is_system:
         raise HTTPException(400, "The fallback service can't be removed")
     service.archived = True
+    record(db, organization_id=service.organization_id, actor=user, entity_type="service", entity_id=service.id, action="archived", details={"code": service.code, "names": service.names})
     remove_code_from_specialties(db, user.organization_id, service.code)
     db.commit()
