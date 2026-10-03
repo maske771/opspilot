@@ -21,7 +21,9 @@ Customer message (Telegram / LINE / WhatsApp / Email)
   → ticket: priority, SLA (property + service → organization → built-in), auto-assigned executor
   → reply to the customer (asks for a photo if none was sent)
   → staff notified in Telegram; SLA monitor warns and escalates
+  → executor records the work (comments, before/after photos) in the ticket's work log
   → completion, manager approval for high/critical, close
+  → every change kept in the ticket's history; sensitive admin actions in the audit log
   → dashboard, daily report (optionally pushed to Telegram), analytics
 ```
 
