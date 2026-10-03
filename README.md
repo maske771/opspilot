@@ -50,17 +50,11 @@ scripts/deploy-prod.sh  production deploy
 docker-compose.yml      local stack
 docker-compose.prod.yml production stack
 ```
-
-`infra/` also contains Prometheus/Alertmanager/Grafana folders that no compose file mounts — the live copies are under `monitoring/`.
-
 ## Local development
 
 ```bash
-# Full stack (API, web, Postgres 17, monitoring)
+# Full stack (API, web, Postgres 17, monitoring); a fresh database volume gets every migration applied
 docker compose up --build
-
-# The local compose file does NOT apply migrations — load the schema once into the fresh database:
-for f in database/migrations/*.sql; do docker compose exec -T db psql -U opspilot -d opspilot < "$f"; done
 
 # Backend tests — need any Postgres; TEST_DATABASE_URL points at it (tests create their own tables)
 cd apps/api
@@ -73,7 +67,7 @@ npm install
 npm run build
 ```
 
-In production (`docker-compose.prod.yml`) a **fresh** database volume applies every file in `database/migrations` automatically. An existing database does not — apply each new migration by hand, before or right after deploying the code that needs it, or requests touching the changed tables fail with 500s.
+Locally and in production, only a **fresh** database volume gets the files in `database/migrations` applied automatically. An existing database does not — apply each new migration by hand, before or right after deploying the code that needs it, or requests touching the changed tables fail with 500s. (Locally, `docker compose down -v` resets the database and re-applies everything.)
 
 ## Documentation
 

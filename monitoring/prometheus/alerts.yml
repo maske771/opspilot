@@ -56,3 +56,12 @@ groups:
         annotations:
           summary: Container memory usage is high
           description: Container memory usage exceeded 85% of its configured limit.
+
+      - alert: PostgreSQLConnectionsHigh
+        expr: pg_stat_database_numbackends{datname="opspilot"} > 80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: PostgreSQL connections are high
+          description: The opspilot database has had more than 80 active connections for 10 minutes (default limit is 100).

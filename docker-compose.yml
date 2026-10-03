@@ -35,6 +35,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./database/migrations:/docker-entrypoint-initdb.d:ro
 
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:v0.18.0
